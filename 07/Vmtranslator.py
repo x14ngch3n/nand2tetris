@@ -266,9 +266,7 @@ class CodeWriter():
 
 if __name__ == '__main__':
     # parse commandline
-    parser = argparse.ArgumentParser(
-        description=
-        'Jack virtual machine\'s translator, from vm code to hack code')
+    parser = argparse.ArgumentParser(description='Jack virtual machine\'s translator, from vm code to hack code')
     parser.add_argument('inputfile', help='file written in vm code')
     parser.add_argument('-o',
                         '--outputfile',
