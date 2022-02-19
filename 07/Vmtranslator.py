@@ -1,14 +1,15 @@
 #!/opt/homebrew/bin/python3
 
-import sys
+import argparse
 
 
 # drive the translation process
 class VMTranslator():
 
-    def __init__(self, inputfile) -> None:
+    def __init__(self, inputfile, outputfile) -> None:
         self.inputfile = inputfile
-        self.outputfile = self.inputfile.replace('vm', 'asm')
+        self.outputfile = outputfile if outputfile else self.inputfile.replace(
+            'vm', 'asm')
 
     def translate(self):
         P = Parser(self.inputfile)
@@ -264,9 +265,21 @@ class CodeWriter():
 
 
 if __name__ == '__main__':
-    assert sys.argv[1].endswith(
+    # parse commandline
+    parser = argparse.ArgumentParser(
+        description=
+        'Jack virtual machine\'s translator, from vm code to hack code')
+    parser.add_argument('inputfile', help='file written in vm code')
+    parser.add_argument('-o',
+                        '--outputfile',
+                        help='where to store translated hack code')
+    inputfile = parser.parse_args().inputfile
+    outputfile = parser.parse_args().outputfile
+    # check inputfile name
+    assert inputfile.endswith(
         '.vm'), 'input filename must contain .vm extension'
-    assert sys.argv[1][0].isupper(
+    assert inputfile[0].isupper(
     ), 'input filename must begin with UPPERCASE letter'
-    VMT = VMTranslator(sys.argv[1])
+    # start translation
+    VMT = VMTranslator(inputfile, outputfile)
     VMT.translate()
