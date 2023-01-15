@@ -9,7 +9,7 @@ M = D
     @SCREEN
     D = D - A
     @END
-    D;JEQ
+    D;JLT
     @R0
     A = M
     M = -1
