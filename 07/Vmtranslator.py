@@ -180,7 +180,8 @@ class CodeWriter():
             self.writeLine('M=D')
 
     '''
-    a set of helper methods using A/M and D register
+    a set of helper using A/M and D register
+    serve as elemenary operation for VM code
     '''
 
     def initMemory(self):
@@ -266,13 +267,11 @@ class CodeWriter():
 
 if __name__ == '__main__':
     # parse commandline
-    parser = argparse.ArgumentParser(
-        description=
-        'Jack virtual machine\'s translator, from vm code to hack code')
-    parser.add_argument('inputfile', help='file written in vm code')
+    parser = argparse.ArgumentParser(description='Jack virtual machine\'s translator, from VM code to HACK assembly code')
+    parser.add_argument('inputfile', help='file written in VM code')
     parser.add_argument('-o',
                         '--outputfile',
-                        help='where to store translated hack code')
+                        help='where to store translated HACK assembly code')
     inputfile = parser.parse_args().inputfile
     outputfile = parser.parse_args().outputfile
     # check inputfile name
