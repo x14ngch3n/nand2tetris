@@ -21,8 +21,7 @@ class VMTranslator:
         C = CodeWriter(self.outputfile)
         for inputfile in self.inputfiles:
             P = Parser(inputfile)
-            C.setFilename(inputfile)
-            C.initMemory()
+            C.setFilename(os.path.basename(inputfile).split(".")[0])
             while P.hasMoreLines():
                 P.advance()
                 self.command_type = P.commandType()
@@ -39,6 +38,12 @@ class VMTranslator:
                     C.writeGoto(self.arg1)
                 elif self.command_type == "C_IF":
                     C.writeIf(self.arg1)
+                elif self.command_type == "C_FUNCTION":
+                    C.writeFuntion(self.arg1, self.arg2)
+                elif self.command_type == "C_CALL":
+                    C.writeCall(self.arg1, self.arg2)
+                elif self.command_type == "C_RETURN":
+                    C.writeReturn()
 
             C.endLoop()
             C.close()
@@ -76,27 +81,34 @@ class Parser:
     def commandType(self) -> str:
         # C type command
         self.tokens = self.curr_command.split(" ")
-        # Arithmetic-Logical Commands
+        # Arithmetic-Logical commands
         if self.tokens[0] in self.arithmetic_commands + self.comparison_commands + self.logical_commands:
             return "C_ARITHMETIC"
-        # Push/Pop Commands
+        # Push/Pop commands
         elif self.tokens[0] == "push":
             return "C_PUSH"
         elif self.tokens[0] == "pop":
             return "C_POP"
-        # Branch Commands
+        # Branch commands
         elif self.tokens[0] == "label":
             return "C_LABEL"
         elif self.tokens[0] == "goto":
             return "C_GOTO"
         elif self.tokens[0] == "if-goto":
             return "C_IF"
+        # Function commands
+        elif self.tokens[0] == "function":
+            return "C_FUNCTION"
+        elif self.tokens[0] == "return":
+            return "C_RETURN"
+        elif self.tokens[0] == "call":
+            return "C_CALL"
 
     # returns the first argument of current command
     def arg1(self, type) -> str:
         if type == "C_ARITHMETIC":
             return self.tokens[0]
-        elif type in ["C_PUSH", "C_POP", "C_LABEL", "C_GOTO", "C_IF"]:
+        elif type in ["C_PUSH", "C_POP", "C_LABEL", "C_GOTO", "C_IF", "C_FUNCTION", "C_CALL"]:
             return self.tokens[1]
         else:
             return ""
@@ -130,13 +142,14 @@ class CodeWriter:
             # static i for i in range(240)
             "static": "16",
         }
-        self.pushTrueCnt = 0
+        self.TrueCnt = 0
         self.afterCnt = 0
         self.comparison_instruction = {
             "eq": "JEQ",
             "gt": "JGT",
             "lt": "JLT",
         }
+        self.functionName = ""
 
     # current file being processed
     def setFilename(self, inputfile: str) -> None:
@@ -148,8 +161,7 @@ class CodeWriter:
 
     # write to outputfile the hack code that implements the given arithmetic-logical command
     def writeArithmetic(self, command: str) -> None:
-        comment = " ".join(["//", command])
-        self.writeLine(comment)
+        self.writeLine(" ".join(["//", command]))
         if command == "add":
             self.popD()
             self.popA()
@@ -183,128 +195,200 @@ class CodeWriter:
 
     # write to outputfile the hack code that implements the given push/pop command
     def writePushPop(self, command: str, segment: str, index: str) -> None:
-        comment = " ".join(["//", command, segment, index])
-        self.writeLine(comment)
+        self.writeLine(" ".join(["//", command, segment, index]))
         if command == "push":
             if segment == "constant":
                 self.pushValue(index)
             else:
-                self.argParse(segment, index)
-                self.writeLine("@R13")
-                self.writeLine("A=M")
-                self.writeLine("D=M")
+                self.getAddress(self.segmentMap[segment], index)
+                self.getValue()
                 self.pushD()
         elif command == "pop":
-            self.argParse(segment, index)
+            self.getAddress(self.segmentMap[segment], index)
             self.popD()
-            # retrive dest from @R13, avoiding D register's conflict
+            # retrive destination from R13, avoiding D register's conflict
             self.writeLine("@R13")
             self.writeLine("A=M")
             self.writeLine("M=D")
 
     # write assembly code that effects the label command
     def writeLabel(self, label: str) -> None:
-        comment = " ".join(["//", "writeLabel:", label])
-        self.writeLine(comment)
-        self.writeLine(f"({label})")
+        mangled_label = f"{self.functionName}${label}" if self.functionName else label
+        self.writeLine(" ".join(["//", "writeLabel:", mangled_label]))
+        self.writeLine(f"({mangled_label})")  # use the mangled label
 
     # write assembly code that effects the goto command
     def writeGoto(self, label: str) -> None:
-        comment = " ".join(["//", "writeGoto:", label])
-        self.writeLine(comment)
-        self.writeLine(f"@{label}")
+        mangled_label = f"{self.functionName}${label}" if self.functionName else label
+        self.writeLine(" ".join(["//", "writeGoto:", mangled_label]))
+        self.writeLine("@" + mangled_label)
         self.writeLine("0;JMP")
 
     # write assembly code that effects the if-goto command
     def writeIf(self, label: str) -> None:
-        comment = " ".join(["//", "writeIf:", label])
-        self.writeLine(comment)
+        mangled_label = f"{self.functionName}${label}" if self.functionName else label
+        self.writeLine(" ".join(["//", "writeIf:", mangled_label]))
         # check branch condition
         self.popD()
-        self.writeLine(f"@{label}")
+        self.writeLine("@" + mangled_label)
         self.writeLine("D;JNE")
+
+    # write assembly code that effects the function command
+    def writeFuntion(self, functionName: str, nVars: str) -> None:
+        self.writeLine(" ".join(["//", "writeFunction:", functionName, nVars]))
+        self.writeLabel(functionName)
+        self.functionName = functionName  # mangle the label name with functionName
+        for _ in range(int(nVars)):
+            self.pushValue(0)
+
+    # write assembly code that effects the call command
+    def writeCall(self, funtcionName: str, nVars: str) -> None:
+        pass
+
+    # write assembly code that effects the return command
+    def writeReturn(self) -> None:
+        self.writeLine(" ".join(["//", "writeReturn"]))
+        # assign LCL to R14 as the temporary variable
+        self.writeLine("// assign LCL to R14 as the temporary variable")
+        self.move("LCL", "R14")
+        # save return address in R15
+        self.writeLine("// save return address in R15")
+        self.setReg("LCL", "-5", "R15")
+        # reposition the return value for the caller
+        self.writeLine("// reposition the return value for the caller")
+        self.popD()
+        self.writeLine("@ARG")
+        self.writeLine("A=M")
+        self.writeLine("M=D")
+        self.writeLine("D=A")
+        # reposition SP for the caller
+        self.writeLine("// reposition SP for the caller")
+        self.writeLine("@SP")
+        self.writeLine("M=D+1")
+        # restore THAT, THIS, ARG, LCL for the caller
+        self.writeLine("// restore THAT for the caller")
+        self.setReg("R14", "-1", "THAT")
+        self.writeLine("// restore THIS for the caller")
+        self.setReg("R14", "-2", "THIS")
+        self.writeLine("// restore ARG for the caller")
+        self.setReg("R14", "-3", "ARG")
+        self.writeLine("// restore LCL for the caller")
+        self.setReg("R14", "-4", "LCL")
+        # goto the return address
+        self.writeLine("// goto the return address")
+        self.writeLine("@R15")
+        self.writeLine("A=M")
+        self.writeLine("0;JMP")
 
     """
     a set of helper using A/M and D register
     serve as elemenary operation for VM code
     """
 
-    def initMemory(self):
+    def initMemory(self) -> None:
         self.initSegment("SP", 256)
         self.initSegment("LCL", 300)
         self.initSegment("ARG", 400)
         self.initSegment("THIS", 3000)
         self.initSegment("THAT", 3010)
 
-    def initSegment(self, name, value):
-        self.writeLine("// initialize " + name + " segment to " + str(value))
+    def initSegment(self, name: str, value: int) -> None:
+        self.writeLine(" ".join(["// initialize", name, "segment to", str(value)]))
         self.writeLine("@" + str(value))
         self.writeLine("D=A")
         self.writeLine("@" + name)
         self.writeLine("M=D")
 
-    def pushD(self):
+    def pushD(self) -> None:
         self.writeLine("@SP")
         self.writeLine("A=M")
         self.writeLine("M=D")
         self.writeLine("@SP")
         self.writeLine("M=M+1")
 
-    def popD(self):
+    def popD(self) -> None:
         self.writeLine("@SP")
         self.writeLine("AM=M-1")
         self.writeLine("D=M")
 
-    def popA(self):
+    def popA(self) -> None:
         self.writeLine("@SP")
         self.writeLine("AM=M-1")
         self.writeLine("A=M")
 
-    def pushValue(self, value):
+    def pushValue(self, value: str) -> None:
         self.writeLine("@" + str(value))
         self.writeLine("D=A")
         self.pushD()
 
-    def comparison(self, jumpInstruction):
+    def comparison(self, jumpInstruction: str) -> None:
         self.popD()
         self.popA()
-        # unique jump target label for each comparison command
-        self.pushTrueName = "PUSH_TRUE." + str(self.pushTrueCnt)
-        self.afterName = "AFTER." + str(self.afterCnt)
-        self.pushTrueCnt += 1
+        # each comparison command has two unique jump target
+        self.TrueTarget = "PUSH_TRUE." + str(self.TrueCnt)
+        self.afterTarget = "AFTER." + str(self.afterCnt)
+        self.TrueCnt += 1
         self.afterCnt += 1
         # simple jump hack code to determine whether push True(-1) of False(0)
         self.writeLine("D=A-D")
-        self.writeLine("@" + self.pushTrueName)
+        self.writeLine("@" + self.TrueTarget)
         self.writeLine("D;" + jumpInstruction)
         self.pushValue(0)
-        self.writeLine("@" + self.afterName)
+        self.writeLine("@" + self.afterTarget)
         self.writeLine("0;JMP")
-        self.writeLabel(self.pushTrueName)
-        # hack code don't support @-1
+        self.writeLabel(self.TrueTarget)
+        # hack code can only assign -1 directly to D
         self.writeLine("D=-1")
         self.pushD()
-        self.writeLabel(self.afterName)
+        self.writeLabel(self.afterTarget)
 
-    # save computed dest addr to D and R13
-    def argParse(self, segment, index):
-        self.writeLine("@" + self.segmentMap[segment])
-        # direct addressing: temp, pointer
-        # indirect addressing: local,argument,this,that
-        self.writeLine("D=A") if segment in ["temp", "pointer", "static"] else self.writeLine("D=M")
-        self.writeLine("@" + index)
-        self.writeLine("D=D+A")
-        # save to temporary regisƒter
+    # compute linear destination address and save it to R13
+    def getAddress(self, segment: str, index: str) -> None:
+        self.writeLine("@" + segment)
+        if segment.isnumeric():
+            # direct addressing: temp(3), pointer(5), static(16) -> segment + index
+            self.writeLine("D=A")
+        else:
+            # linear addressing: LCL, ARG, THIS, THAT -> [segment] + index
+            self.writeLine("D=M")
+        # add/sub index, as HACK assembly do not suport @-1
+        if int(index) >= 0:
+            self.writeLine("@" + index)
+            self.writeLine("D=D+A")
+        else:
+            self.writeLine("@" + index[1:])
+            self.writeLine("D=D-A")
+        # save to temporary register
         self.writeLine("@R13")
         self.writeLine("M=D")
 
-    def endLoop(self):
+    # read value stored at address R13 and store it to D
+    def getValue(self) -> None:
+        self.writeLine("@R13")
+        self.writeLine("A=M")
+        self.writeLine("D=M")
+
+    # read value at segment+index and store it to segment register
+    def setReg(self, segment: str, index: str, register: str) -> None:
+        self.getAddress(segment, index)
+        self.getValue()
+        self.writeLine("@" + register)
+        self.writeLine("M=D")
+
+    # move the value of source register to destination register
+    def move(self, src: str, dst: str) -> None:
+        self.writeLine("@" + src)
+        self.writeLine("D=M")
+        self.writeLine("@" + dst)
+        self.writeLine("M=D")
+
+    def endLoop(self) -> None:
         self.writeLine("// end hack program with infinite loop")
-        self.writeLine("(END_LOOP)")
-        self.writeLine("@END_LOOP")
+        self.writeLine("(INF_LOOP)")
+        self.writeLine("@INF_LOOP")
         self.writeLine("0;JMP")
 
-    def close(self):
+    def close(self) -> None:
         self.file.close()
         print("Hack code saved to: ", self.outputfile)
 

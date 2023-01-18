@@ -1,28 +1,3 @@
-// initialize SP segment to 256
-@256
-D=A
-@SP
-M=D
-// initialize LCL segment to 300
-@300
-D=A
-@LCL
-M=D
-// initialize ARG segment to 400
-@400
-D=A
-@ARG
-M=D
-// initialize THIS segment to 3000
-@3000
-D=A
-@THIS
-M=D
-// initialize THAT segment to 3010
-@3010
-D=A
-@THAT
-M=D
 // push constant 0
 @0
 D=A
@@ -188,6 +163,6 @@ M=D
 @SP
 M=M+1
 // end hack program with infinite loop
-(END_LOOP)
-@END_LOOP
+(INF_LOOP)
+@INF_LOOP
 0;JMP
