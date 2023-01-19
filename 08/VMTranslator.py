@@ -322,8 +322,6 @@ class CodeWriter:
         self.writeLine("@R15")
         self.writeLine("A=M")
         self.writeLine("0;JMP")
-        # reset functionName
-        self.functionName = ""
 
     # write bootstrap code at the beginning of HACK code
     def writeBootstrap(self):
@@ -393,9 +391,16 @@ class CodeWriter:
 
     # compute linear destination address and save it to R13
     def getAddress(self, segment: str, index: str) -> None:
+        # translate static variable to assembly symbol, later allocated onward address 16 by assembler
+        if segment == "16":
+            self.writeLine(f"@{self.inputfile}.{index}")
+            self.writeLine("D=A")
+            self.writeLine("@R13")
+            self.writeLine("M=D")
+            return
         self.writeLine("@" + segment)
         if segment.isnumeric():
-            # direct addressing: temp(3), pointer(5), static(16) -> segment + index
+            # direct addressing: temp(3), pointer(5) -> segment + index
             self.writeLine("D=A")
         else:
             # linear addressing: LCL, ARG, THIS, THAT -> [segment] + index
