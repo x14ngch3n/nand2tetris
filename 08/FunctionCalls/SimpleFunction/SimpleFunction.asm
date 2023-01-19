@@ -1,5 +1,4 @@
 // writeFunction: SimpleFunction.test 2
-// writeLabel: SimpleFunction.test
 (SimpleFunction.test)
 @0
 D=A
@@ -204,8 +203,4 @@ M=D
 // goto the return address
 @R15
 A=M
-0;JMP
-// end hack program with infinite loop
-(INF_LOOP)
-@INF_LOOP
 0;JMP

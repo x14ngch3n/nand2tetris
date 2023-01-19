@@ -17,8 +17,10 @@ class VMTranslator:
             self.outputfile = input.replace("vm", "asm")
 
     # translate single file
-    def translate(self) -> None:
+    def translate(self, bootstrap: bool, endloop: bool) -> None:
         C = CodeWriter(self.outputfile)
+        if bootstrap:
+            C.writeBootstrap()
         for inputfile in self.inputfiles:
             P = Parser(inputfile)
             C.setFilename(os.path.basename(inputfile).split(".")[0])
@@ -44,9 +46,9 @@ class VMTranslator:
                     C.writeCall(self.arg1, self.arg2)
                 elif self.command_type == "C_RETURN":
                     C.writeReturn()
-
+        if endloop:
             C.endLoop()
-            C.close()
+        C.close()
 
 
 # understand what the command seek to do
@@ -144,6 +146,7 @@ class CodeWriter:
         }
         self.TrueCnt = 0
         self.afterCnt = 0
+        self.returnCnt = 0
         self.comparison_instruction = {
             "eq": "JEQ",
             "gt": "JGT",
@@ -215,7 +218,7 @@ class CodeWriter:
     def writeLabel(self, label: str) -> None:
         mangled_label = f"{self.functionName}${label}" if self.functionName else label
         self.writeLine(" ".join(["//", "writeLabel:", mangled_label]))
-        self.writeLine(f"({mangled_label})")  # use the mangled label
+        self.writeLine(f"({mangled_label})")
 
     # write assembly code that effects the goto command
     def writeGoto(self, label: str) -> None:
@@ -236,14 +239,54 @@ class CodeWriter:
     # write assembly code that effects the function command
     def writeFuntion(self, functionName: str, nVars: str) -> None:
         self.writeLine(" ".join(["//", "writeFunction:", functionName, nVars]))
-        self.writeLabel(functionName)
+        self.writeLine(f"({functionName})")
         self.functionName = functionName  # mangle the label name with functionName
         for _ in range(int(nVars)):
-            self.pushValue(0)
+            self.pushValue("0")
 
     # write assembly code that effects the call command
-    def writeCall(self, funtcionName: str, nVars: str) -> None:
-        pass
+    def writeCall(self, functionName: str, nArgs: str) -> None:
+        self.writeLine(" ".join(["//", "writeCall:", functionName, nArgs]))
+        # generate return address label and push it to stack
+        self.writeLine("// push return address to stack")
+        mangled_label = f"{self.functionName}$ret.{self.returnCnt}"
+        self.returnCnt += 1
+        self.writeLine("@" + mangled_label)
+        self.writeLine("D=A")
+        self.pushD()
+        # save LCL of the caller
+        self.writeLine("// save LCL of the caller")
+        self.pushReg("LCL")
+        # save ARG of the caller
+        self.writeLine("// save ARG of the caller")
+        self.pushReg("ARG")
+        # save THIS of the caller
+        self.writeLine("// save THIS of the caller")
+        self.pushReg("THIS")
+        # save THAT of the caller
+        self.writeLine("// save THAT of the caller")
+        self.pushReg("THAT")
+        # reposition ARG to SP - 5 - nArgs
+        self.writeLine("// reposition ARG to SP - 5 - nArgs")
+        self.writeLine("@SP")
+        self.writeLine("D=M")
+        self.writeLine("@5")
+        self.writeLine("D=D-A")
+        if int(nArgs):
+            self.writeLine("@" + nArgs)
+            self.writeLine("D=D-A")
+        self.writeLine("@ARG")
+        self.writeLine("M=D")
+        # reposition LCL to SP
+        self.writeLine("// reposition LCL to SP")
+        self.move("SP", "LCL")
+        # transfer control to the callee
+        self.writeLine("// transfer control to the callee")
+        self.writeLine("@" + functionName)
+        self.writeLine("0;JMP")
+        # injects the return address label here
+        self.writeLine("// injects the return address label here")
+        self.writeLine(f"({mangled_label})")
 
     # write assembly code that effects the return command
     def writeReturn(self) -> None:
@@ -279,25 +322,22 @@ class CodeWriter:
         self.writeLine("@R15")
         self.writeLine("A=M")
         self.writeLine("0;JMP")
+        # reset functionName
+        self.functionName = ""
+
+    # write bootstrap code at the beginning of HACK code
+    def writeBootstrap(self):
+        # stack initialization
+        self.writeLine("// map stack on the host RAM from address 256 onward")
+        self.setReg("", "256", "SP")
+        # begin execution
+        self.writeLine("// start executing with the OS function Sys.init")
+        self.writeCall("Sys.init", "0")
 
     """
     a set of helper using A/M and D register
     serve as elemenary operation for VM code
     """
-
-    def initMemory(self) -> None:
-        self.initSegment("SP", 256)
-        self.initSegment("LCL", 300)
-        self.initSegment("ARG", 400)
-        self.initSegment("THIS", 3000)
-        self.initSegment("THAT", 3010)
-
-    def initSegment(self, name: str, value: int) -> None:
-        self.writeLine(" ".join(["// initialize", name, "segment to", str(value)]))
-        self.writeLine("@" + str(value))
-        self.writeLine("D=A")
-        self.writeLine("@" + name)
-        self.writeLine("M=D")
 
     def pushD(self) -> None:
         self.writeLine("@SP")
@@ -317,8 +357,13 @@ class CodeWriter:
         self.writeLine("A=M")
 
     def pushValue(self, value: str) -> None:
-        self.writeLine("@" + str(value))
+        self.writeLine("@" + value)
         self.writeLine("D=A")
+        self.pushD()
+
+    def pushReg(self, register: str) -> None:
+        self.writeLine("@" + register)
+        self.writeLine("D=M")
         self.pushD()
 
     def comparison(self, jumpInstruction: str) -> None:
@@ -327,20 +372,24 @@ class CodeWriter:
         # each comparison command has two unique jump target
         self.TrueTarget = "PUSH_TRUE." + str(self.TrueCnt)
         self.afterTarget = "AFTER." + str(self.afterCnt)
+        # mangle the jump target
+        if self.functionName:
+            self.TrueTarget = f"{self.functionName}${self.TrueTarget}"
+            self.afterTarget = f"{self.functionName}${self.afterTarget}"
         self.TrueCnt += 1
         self.afterCnt += 1
         # simple jump hack code to determine whether push True(-1) of False(0)
         self.writeLine("D=A-D")
         self.writeLine("@" + self.TrueTarget)
         self.writeLine("D;" + jumpInstruction)
-        self.pushValue(0)
+        self.pushValue("0")
         self.writeLine("@" + self.afterTarget)
         self.writeLine("0;JMP")
-        self.writeLabel(self.TrueTarget)
+        self.writeLine(f"({self.TrueTarget})")
         # hack code can only assign -1 directly to D
         self.writeLine("D=-1")
         self.pushD()
-        self.writeLabel(self.afterTarget)
+        self.writeLine(f"({self.afterTarget})")
 
     # compute linear destination address and save it to R13
     def getAddress(self, segment: str, index: str) -> None:
@@ -368,12 +417,18 @@ class CodeWriter:
         self.writeLine("A=M")
         self.writeLine("D=M")
 
-    # read value at segment+index and store it to segment register
+    # read value at segment+index and store it to segment register or directly assign index to register
     def setReg(self, segment: str, index: str, register: str) -> None:
-        self.getAddress(segment, index)
-        self.getValue()
-        self.writeLine("@" + register)
-        self.writeLine("M=D")
+        if segment:
+            self.getAddress(segment, index)
+            self.getValue()
+            self.writeLine("@" + register)
+            self.writeLine("M=D")
+        else:
+            self.writeLine("@" + index)
+            self.writeLine("D=A")
+            self.writeLine("@" + register)
+            self.writeLine("M=D")
 
     # move the value of source register to destination register
     def move(self, src: str, dst: str) -> None:
@@ -399,7 +454,11 @@ if __name__ == "__main__":
         description="Jack virtual machine's translator, from VM code to HACK assembly code"
     )
     parser.add_argument("input", help=".vm file or folder contains .vm files")
+    parser.add_argument("-b", "--bootstrap", action="store_true", help="add bootstrap code at begins")
+    parser.add_argument("-e", "--endloop", action="store_true", help="add infinite loop code at the end")
     input = parser.parse_args().input
+    bootstrap = parser.parse_args().bootstrap
+    endloop = parser.parse_args().endloop
     # start translation
     VMT = VMTranslator(input)
-    VMT.translate()
+    VMT.translate(bootstrap, endloop)
