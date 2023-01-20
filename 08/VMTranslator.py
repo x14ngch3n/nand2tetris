@@ -249,7 +249,8 @@ class CodeWriter:
         self.writeLine(" ".join(["//", "writeCall:", functionName, nArgs]))
         # generate return address label and push it to stack
         self.writeLine("// push return address to stack")
-        mangled_label = f"{self.functionName}$ret.{self.returnCnt}"
+        label = f"ret.{self.returnCnt}"
+        mangled_label = f"{self.functionName}${label}" if self.functionName else label
         self.returnCnt += 1
         self.writeLine("@" + mangled_label)
         self.writeLine("D=A")
