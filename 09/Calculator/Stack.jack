@@ -1,0 +1,80 @@
+/** This code implement Stack using linked list for storing operators and operands */
+class Stack {
+    field List list;    // head node of the contained linked list
+
+    constructor Stack new() {
+        let list = List.new(0, null); // initialize the dummy head node
+        return this;
+    }
+
+    method void push(int car) {
+        var List topNode;
+        let topNode = List.new(car, list.getNext());
+        do list.setNext(topNode);
+        return;
+    }
+
+    method int pop() {
+        var List topNode;
+        var int topData;
+        let topNode = list.getNext();
+        let topData = topNode.getData();
+        do list.setNext(topNode.getNext());
+        do Memory.deAlloc(topNode);
+        return topData;
+    }
+
+    /** return the top node's value without modifying the stack */
+    method int top() {
+        var List topNode;
+        var int topData;
+        let topNode = list.getNext();
+        let topData = topNode.getData();
+        return topData;
+    }
+
+    /** return true if current stack is empty */
+    method bool isEmpty() {
+        if (list.getNext() = null) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /** return true if the given operand has higher priority than the stack's top operand */
+    method bool compare(int operator1) {
+        var int priority1, priority2;
+        var int operator2;
+        /** get priority value: +, - has priority 1, *, / has priority 2 */
+        if ((operator1 = 43) | (operator1 = 45)) {
+            let priority1 = 1;
+        } else {
+            let priority1 = 2;
+        }
+        let operator2 = top();
+        if ((operator2 = 43) | (operator2 = 45)) {
+            let priority2 = 1;
+        } else {
+            let priority2 = 2;
+        }
+        /** make comparison */
+        if (priority1 < priority2) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    method void print() {
+        var List realList;
+        let realList = list.getNext();
+        if (realList = null) {
+            do Output.printString("empty stack");
+        } else {
+            do realList.print();
+        }
+        do Output.println();
+        return;
+    }
+}

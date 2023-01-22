@@ -1,0 +1,196 @@
+function Calculator.new 0
+push constant 3
+call Memory.alloc 1
+pop pointer 0
+call Stack.new 0
+pop this 0
+call Stack.new 0
+pop this 1
+push argument 0
+pop this 2
+push pointer 0
+return
+function Calculator.eval 4
+push argument 0
+pop pointer 0
+push constant 0
+pop local 0
+push this 2
+call String.length 1
+pop local 1
+label WHILE_EXP0
+push local 0
+push local 1
+lt
+not
+if-goto WHILE_END0
+push this 2
+push local 0
+call String.charAt 2
+pop local 3
+push local 3
+push constant 43
+eq
+push local 3
+push constant 45
+eq
+or
+push local 3
+push constant 42
+eq
+or
+push local 3
+push constant 47
+eq
+or
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push pointer 0
+push local 3
+call Calculator.operator_handler 2
+pop temp 0
+push this 0
+push local 3
+call Stack.push 2
+pop temp 0
+label IF_FALSE0
+push local 3
+push constant 47
+gt
+push local 3
+push constant 58
+lt
+and
+if-goto IF_TRUE1
+goto IF_FALSE1
+label IF_TRUE1
+push this 1
+push local 3
+push constant 48
+sub
+call Stack.push 2
+pop temp 0
+label IF_FALSE1
+push local 0
+push constant 1
+add
+pop local 0
+goto WHILE_EXP0
+label WHILE_END0
+label WHILE_EXP1
+push this 0
+call Stack.isEmpty 1
+not
+not
+if-goto WHILE_END1
+push pointer 0
+push this 0
+call Stack.pop 1
+call Calculator.operation 2
+pop temp 0
+goto WHILE_EXP1
+label WHILE_END1
+push this 1
+call Stack.pop 1
+pop local 2
+push local 2
+return
+function Calculator.operation 3
+push argument 0
+pop pointer 0
+push this 1
+call Stack.pop 1
+pop local 1
+push this 1
+call Stack.pop 1
+pop local 0
+push argument 1
+push constant 43
+eq
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push local 0
+push local 1
+add
+pop local 2
+label IF_FALSE0
+push argument 1
+push constant 45
+eq
+if-goto IF_TRUE1
+goto IF_FALSE1
+label IF_TRUE1
+push local 0
+push local 1
+sub
+pop local 2
+label IF_FALSE1
+push argument 1
+push constant 42
+eq
+if-goto IF_TRUE2
+goto IF_FALSE2
+label IF_TRUE2
+push local 0
+push local 1
+call Math.multiply 2
+pop local 2
+label IF_FALSE2
+push argument 1
+push constant 47
+eq
+if-goto IF_TRUE3
+goto IF_FALSE3
+label IF_TRUE3
+push local 0
+push local 1
+call Math.divide 2
+pop local 2
+label IF_FALSE3
+push this 1
+push local 2
+call Stack.push 2
+pop temp 0
+push constant 0
+return
+function Calculator.operator_handler 0
+push argument 0
+pop pointer 0
+label WHILE_EXP0
+push constant 0
+not
+not
+if-goto WHILE_END0
+push this 0
+call Stack.isEmpty 1
+not
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push this 0
+push argument 1
+call Stack.compare 2
+if-goto IF_TRUE1
+goto IF_FALSE1
+label IF_TRUE1
+push pointer 0
+push this 0
+call Stack.pop 1
+call Calculator.operation 2
+pop temp 0
+goto IF_END1
+label IF_FALSE1
+push constant 0
+return
+label IF_END1
+goto IF_END0
+label IF_FALSE0
+push constant 0
+return
+label IF_END0
+goto WHILE_EXP0
+label WHILE_END0
+push constant 0
+return

@@ -1,0 +1,17 @@
+/** initialize stack and read from keyboard */
+class Main {
+    function void main() {
+        var Calculator calculator;
+        var int data;
+        /** get input expression */
+        var String expression;
+        let expression = Keyboard.readLine("Input your expression: ");
+        /** create a Calculator object and get result */
+        let calculator = Calculator.new(expression);
+        let data = calculator.eval();
+        /** print result to output */
+        do Output.printString("Result is: ");
+        do Output.printInt(data);
+        return;
+    }
+}

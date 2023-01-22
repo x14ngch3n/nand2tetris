@@ -1,0 +1,82 @@
+class Calculator {
+    field Stack operators;
+    field Stack operands;
+    field String expression;
+
+    /** create a Calculator */
+    constructor Calculator new(String str) {
+        let operators = Stack.new();
+        let operands = Stack.new();
+        let expression = str;
+        return this;
+    }
+
+    /** do evaluation */
+    method int eval() {
+        var int idx, len, result;
+        var char c;
+        let idx = 0;
+        let len = expression.length();
+        /** scan the expression */
+        while (idx < len) {
+            let c = expression.charAt(idx);
+            /** handle operators */
+            if ((c = 43) | (c = 45) | (c = 42) | (c = 47)) {
+                do operator_handler(c);
+                do operators.push(c);
+            }
+            /** handle operands - directly push to stack */
+            if ((c > 47) & (c < 58)) {
+                do operands.push(c - 48);
+            }
+            /** ignore other characters */
+            let idx = idx + 1;
+        }
+        /** handle remain operators */
+        while (~operators.isEmpty()) {
+            do operation(operators.pop());
+        }
+        /** pop result */
+        let result = operands.pop();
+        return result;
+    }
+
+    /** pop two element from operands stack and do binary operation, then push the result to operands stack */
+    method void operation(int operator) {
+        var int operand1, operand2;
+        var int result;
+        let operand2 = operands.pop();
+        let operand1 = operands.pop();
+        if (operator = 43) { /** add */
+            let result = operand1 + operand2;
+        }
+        if (operator = 45) { /** sub */
+            let result = operand1 - operand2;
+        }
+        if (operator = 42) { /** multiply */
+            let result = operand1 * operand2;
+        }
+        if (operator = 47) { /** divide */
+            let result = operand1 / operand2;
+        }
+        do operands.push(result);
+        return;
+    }
+
+    /** compare to the top of operators stack until meet a lower or same priority */
+    /** wrap these code in an isolated function in that there is no break statement in Jack */
+    method void operator_handler(int operator) {
+        while (true) {
+            if (~operators.isEmpty()) {
+                if (operators.compare(operator)) {
+                    do operation(operators.pop());
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            }
+        }
+        return;
+    }
+}

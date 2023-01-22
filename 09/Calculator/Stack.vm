@@ -1,0 +1,174 @@
+function Stack.new 0
+push constant 1
+call Memory.alloc 1
+pop pointer 0
+push constant 0
+push constant 0
+call List.new 2
+pop this 0
+push pointer 0
+return
+function Stack.push 1
+push argument 0
+pop pointer 0
+push argument 1
+push this 0
+call List.getNext 1
+call List.new 2
+pop local 0
+push this 0
+push local 0
+call List.setNext 2
+pop temp 0
+push constant 0
+return
+function Stack.pop 2
+push argument 0
+pop pointer 0
+push this 0
+call List.getNext 1
+pop local 0
+push local 0
+call List.getData 1
+pop local 1
+push this 0
+push local 0
+call List.getNext 1
+call List.setNext 2
+pop temp 0
+push local 0
+call Memory.deAlloc 1
+pop temp 0
+push local 1
+return
+function Stack.top 2
+push argument 0
+pop pointer 0
+push this 0
+call List.getNext 1
+pop local 0
+push local 0
+call List.getData 1
+pop local 1
+push local 1
+return
+function Stack.isEmpty 0
+push argument 0
+pop pointer 0
+push this 0
+call List.getNext 1
+push constant 0
+eq
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push constant 0
+not
+return
+goto IF_END0
+label IF_FALSE0
+push constant 0
+return
+label IF_END0
+function Stack.compare 3
+push argument 0
+pop pointer 0
+push argument 1
+push constant 43
+eq
+push argument 1
+push constant 45
+eq
+or
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push constant 1
+pop local 0
+goto IF_END0
+label IF_FALSE0
+push constant 2
+pop local 0
+label IF_END0
+push pointer 0
+call Stack.top 1
+pop local 2
+push local 2
+push constant 43
+eq
+push local 2
+push constant 45
+eq
+or
+if-goto IF_TRUE1
+goto IF_FALSE1
+label IF_TRUE1
+push constant 1
+pop local 1
+goto IF_END1
+label IF_FALSE1
+push constant 2
+pop local 1
+label IF_END1
+push local 0
+push local 1
+lt
+if-goto IF_TRUE2
+goto IF_FALSE2
+label IF_TRUE2
+push constant 0
+not
+return
+goto IF_END2
+label IF_FALSE2
+push constant 0
+return
+label IF_END2
+function Stack.print 1
+push argument 0
+pop pointer 0
+push this 0
+call List.getNext 1
+pop local 0
+push local 0
+push constant 0
+eq
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push constant 11
+call String.new 1
+push constant 101
+call String.appendChar 2
+push constant 109
+call String.appendChar 2
+push constant 112
+call String.appendChar 2
+push constant 116
+call String.appendChar 2
+push constant 121
+call String.appendChar 2
+push constant 32
+call String.appendChar 2
+push constant 115
+call String.appendChar 2
+push constant 116
+call String.appendChar 2
+push constant 97
+call String.appendChar 2
+push constant 99
+call String.appendChar 2
+push constant 107
+call String.appendChar 2
+call Output.printString 1
+pop temp 0
+goto IF_END0
+label IF_FALSE0
+push local 0
+call List.print 1
+pop temp 0
+label IF_END0
+call Output.println 0
+pop temp 0
+push constant 0
+return
