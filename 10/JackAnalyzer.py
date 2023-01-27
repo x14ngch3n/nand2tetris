@@ -2,6 +2,8 @@
 
 import argparse
 import os
+import xml.etree.ElementTree as ET
+
 from JackTokenizer import JackTokenizer
 from CompilationEngine import CompilationEngine
 
@@ -27,36 +29,27 @@ class JackAnalyzer:
         for inputfile in self.inputfiles:
             outputfile = inputfile.replace(".jack", "T.xml.1")
             tokenizer = JackTokenizer(inputfile)
-            outputstream = open(outputfile, "w")
-            outputstream.write("<tokens>\n")
+            xmldata = ET.Element("tokens")
             while tokenizer.hasMoreTokens():
                 tokenizer.advance()
                 if tokenizer.tokentype == "KEYWORD":
-                    outputstream.write(f"<keyword> {tokenizer.token} </keyword>\n")
+                    token = ET.SubElement(xmldata, "keyword")
+                    token.text = tokenizer.token
                 elif tokenizer.tokentype == "SYMBOL":
-                    if tokenizer.token == "<":
-                        outputstream.write("<symbol> &lt; </symbol>\n")
-                    elif tokenizer.token == ">":
-                        outputstream.write("<symbol> &gt; </symbol>\n")
-                    elif tokenizer.token == '"':
-                        outputstream.write("<symbol> &quot; </symbol>\n")
-                    elif tokenizer.token == "&":
-                        outputstream.write("<symbol> &amp; </symbol>\n")
-                    else:
-                        outputstream.write(f"<symbol> {tokenizer.token} </symbol>\n")
+                    token = ET.SubElement(xmldata, "symbol")
+                    token.text = tokenizer.token
                 elif tokenizer.tokentype == "INT_CONST":
-                    outputstream.write(
-                        f"<integerConstant> {tokenizer.token} </integerConstant>\n"
-                    )
+                    token = ET.SubElement(xmldata, "integerConstant")
+                    token.text = tokenizer.token
                 elif tokenizer.tokentype == "STRING_CONST":
-                    outputstream.write(
-                        f"<stringConstant> {tokenizer.token} </stringConstant>\n"
-                    )
+                    token = ET.SubElement(xmldata, "stringConstant")
+                    token.text = tokenizer.token
                 elif tokenizer.tokentype == "IDENTIFIER":
-                    outputstream.write(
-                        f"<identifier> {tokenizer.token} </identifier>\n"
-                    )
-            outputstream.write("</tokens>\n")
+                    token = ET.SubElement(xmldata, "identifier")
+                    token.text = tokenizer.token
+            ET.indent(xmldata)
+            with open(outputfile, "w") as f:
+                f.writelines(ET.tostringlist(xmldata, encoding="unicode"))
 
 
 if __name__ == "__main__":
