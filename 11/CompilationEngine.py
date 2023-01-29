@@ -97,7 +97,6 @@ class CompilationEngine:
     def compileParameterList(self, xmlsubroutine: ET.Element) -> None:
         # create new xml element
         xmlparameterList = ET.SubElement(xmlsubroutine, "parameterList")
-        xmlparameterList.text = "\n"
         # parse zero or more arguments
         while self.tokentype in ["KEYWORD", "IDENTIFIER"]:
             # parse type
@@ -156,7 +155,6 @@ class CompilationEngine:
     def compileStatements(self, xmlparent: ET.Element) -> None:
         # create new xml element
         xmlstatements = ET.SubElement(xmlparent, "statements")
-        xmlstatements.text = "\n"
         # parse zero or more statements
         while self.token in ["let", "if", "while", "do", "return"]:
             # parse letStatement
@@ -399,7 +397,6 @@ class CompilationEngine:
     def compileExpressionList(self, xmlsubroutineCall: ET.Element) -> int:
         # create new xml element
         xmlexpressionList = ET.SubElement(xmlsubroutineCall, "expressionList")
-        xmlexpressionList.text = "\n"
         # initialize expression counter
         cnt = 0
         # parse zero or more expression
@@ -419,6 +416,16 @@ class CompilationEngine:
     def addXmlElement(self, parent: ET.Element, type: str) -> None:
         element = ET.SubElement(parent, type)
         element.text = self.token
+
+    # write the formatted xml data to file
+    def writeXml(self) -> None:
+        ET.indent(self.xmlclass)
+        with open(self.outputfile, "w") as f:
+            f.write(
+                ET.tostring(
+                    self.xmlclass, encoding="unicode", short_empty_elements=False
+                )
+            )
 
     # get all tokens and their type from tokenizer at once
     def getTokenStream(self) -> None:

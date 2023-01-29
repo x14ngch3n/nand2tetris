@@ -25,9 +25,10 @@ class JackCompiler:
     # drive the syntax analysis process
     def compile(self) -> None:
         for inputfile in self.inputfiles:
-            outputfile = inputfile.replace("jack", "xml.1")
+            outputfile = inputfile.replace("jack", "xml")
             engine = CompilationEngine(inputfile, outputfile)
             engine.compileClass()
+            engine.writeXml()
 
 
 if __name__ == "__main__":
