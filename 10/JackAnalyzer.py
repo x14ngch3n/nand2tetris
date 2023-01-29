@@ -2,9 +2,7 @@
 
 import argparse
 import os
-import xml.etree.ElementTree as ET
 
-from JackTokenizer import JackTokenizer
 from CompilationEngine import CompilationEngine
 
 
@@ -27,29 +25,10 @@ class JackAnalyzer:
     # drive the syntax analysis process
     def analyze(self) -> None:
         for inputfile in self.inputfiles:
-            outputfile = inputfile.replace(".jack", "T.xml.1")
-            tokenizer = JackTokenizer(inputfile)
-            xmldata = ET.Element("tokens")
-            while tokenizer.hasMoreTokens():
-                tokenizer.advance()
-                if tokenizer.tokentype == "KEYWORD":
-                    token = ET.SubElement(xmldata, "keyword")
-                    token.text = tokenizer.token
-                elif tokenizer.tokentype == "SYMBOL":
-                    token = ET.SubElement(xmldata, "symbol")
-                    token.text = tokenizer.token
-                elif tokenizer.tokentype == "INT_CONST":
-                    token = ET.SubElement(xmldata, "integerConstant")
-                    token.text = tokenizer.token
-                elif tokenizer.tokentype == "STRING_CONST":
-                    token = ET.SubElement(xmldata, "stringConstant")
-                    token.text = tokenizer.token
-                elif tokenizer.tokentype == "IDENTIFIER":
-                    token = ET.SubElement(xmldata, "identifier")
-                    token.text = tokenizer.token
-            ET.indent(xmldata)
-            with open(outputfile, "w") as f:
-                f.writelines(ET.tostringlist(xmldata, encoding="unicode"))
+            outputfile = inputfile.replace("jack", "xml.1")
+            engine = CompilationEngine(inputfile, outputfile)
+            engine.compileClass()
+            engine.writeXml()
 
 
 if __name__ == "__main__":

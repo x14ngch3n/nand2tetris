@@ -1,11 +1,15 @@
 DIRS = ArrayTest Square ExpressionLessSquare
-JACKFILES = $(shell find . -name *T.xml)
+XMLTFILES = $(shell find . -name *T.xml)
+XMLFILES = $(shell find . -name *[^T].xml)
 
-tokenizer:
+analyzer:
 	$(foreach dir, $(DIRS), ./JackAnalyzer.py $(dir);)
 
-test_tokenizer: tokenizer
-	$(foreach file, $(JACKFILES), ../../tools/TextComparer.sh $(file) $(file).1;)
+test_tokenizer: analyzer
+	$(foreach file, $(XMLTFILES), ../../tools/TextComparer.sh $(file) $(file).1;)
+
+test_compilation: analyzer
+	$(foreach file, $(XMLFILES), ../../tools/TextComparer.sh $(file) $(file).1;)
 
 clean:
 	$(foreach dir, $(DIRS), rm -rf $(dir)/*.1)
