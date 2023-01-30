@@ -3,6 +3,7 @@
 
 import xml.etree.ElementTree as ET
 from JackTokenizer import JackTokenizer
+from SymbolTable import SymbolTable
 
 
 class CompilationEngine:
@@ -29,6 +30,9 @@ class CompilationEngine:
         # parse className
         self.advance()
         self.addXmlElement(xmlclass, "identifier")
+        # create class-level symbol table and subroutine-level symbol table
+        self.classST = SymbolTable(self.token)
+        self.subroutineST = SymbolTable(self.token)
         # parse "{"
         self.advance()
         self.addXmlElement(xmlclass, "symbol")
@@ -48,16 +52,23 @@ class CompilationEngine:
         xmlclassVarDec = ET.SubElement(xmlclass, "classVarDec")
         # parse "static" or "field"
         self.addXmlElement(xmlclassVarDec, "keyword")
+        kind = self.token
         # parse type
         self.advance()
         self.addXmlElement(xmlclassVarDec, self.tokentype.lower())
+        type = self.token
         # parse one or more varNames
         self.advance()
         while not self.token == ";":
             # parse varName
-            self.addXmlElement(xmlclassVarDec, "identifier")
-            self.advance()
+            name = self.token
+            # add to class-level symbol table
+            self.classST.define(name, type, kind)
+            self.addXmlElement(
+                xmlclassVarDec, "identifier", self.getSTinfo(name, "declared")
+            )
             # parse possibly ","
+            self.advance()
             if self.token == ",":
                 self.addXmlElement(xmlclassVarDec, "symbol")
                 self.advance()
@@ -70,8 +81,13 @@ class CompilationEngine:
     def compileSubroutineDec(self, xmlclass: ET.Element) -> None:
         # create new xml element
         xmlsubroutineDec = ET.SubElement(xmlclass, "subroutineDec")
+        # reset subroutine-level symbol table
+        self.subroutineST.reset()
         # parse "constructor", "function" or "method"
         self.addXmlElement(xmlsubroutineDec, "keyword")
+        # add implicit variable: this pointer
+        if self.token == "method":
+            self.subroutineST.define("this", self.subroutineST.classname, "arg")
         # parse "void" or type
         self.advance()
         self.addXmlElement(xmlsubroutineDec, self.tokentype.lower())
@@ -100,12 +116,18 @@ class CompilationEngine:
         # parse zero or more arguments
         while self.tokentype in ["KEYWORD", "IDENTIFIER"]:
             # parse type
-            self.addXmlElement(xmlparameterList, "keyword")
+            self.addXmlElement(xmlparameterList, self.tokentype.lower())
+            type = self.token
             # parse varName
             self.advance()
-            self.addXmlElement(xmlparameterList, "identifier")
-            self.advance()
+            # add parameter to symbol table
+            name = self.token
+            self.subroutineST.define(name, type, "arg")
+            self.addXmlElement(
+                xmlparameterList, "identifier", self.getSTinfo(name, "declared")
+            )
             # parse possibly ","
+            self.advance()
             if self.token == ",":
                 self.addXmlElement(xmlparameterList, "symbol")
                 self.advance()
@@ -134,11 +156,17 @@ class CompilationEngine:
         # parse type
         self.advance()
         self.addXmlElement(xmlvarDec, self.tokentype.lower())
+        type = self.token
         # parse one or more varNames(using do-while loop)
         while True:
             # parse varName
             self.advance()
-            self.addXmlElement(xmlvarDec, "identifier")
+            name = self.token
+            # add local variable to symbol table
+            self.subroutineST.define(name, type, "var")
+            self.addXmlElement(
+                xmlvarDec, "identifier", self.getSTinfo(name, "declared")
+            )
             # parse possibly ","
             self.advance()
             if self.token == ",":
@@ -181,7 +209,9 @@ class CompilationEngine:
         self.addXmlElement(xmlletStatement, "keyword")
         # parse varName
         self.advance()
-        self.addXmlElement(xmlletStatement, "identifier")
+        self.addXmlElement(
+            xmlletStatement, "identifier", self.getSTinfo(self.token, "used")
+        )
         # parse possibly "["
         self.advance()
         if self.token == "[":
@@ -332,7 +362,9 @@ class CompilationEngine:
             next_token = self.tokenstream[self.position + 1][0]
             if next_token == "[":
                 # parse varName
-                self.addXmlElement(xmlparent, "identifier")
+                self.addXmlElement(
+                    xmlparent, "identifier", self.getSTinfo(self.token, "used")
+                )
                 # parse "["
                 self.advance()
                 self.addXmlElement(xmlparent, "symbol")
@@ -372,7 +404,9 @@ class CompilationEngine:
                 self.addXmlElement(xmlparent, "symbol")
             # parse varName
             else:
-                self.addXmlElement(xmlterm, "identifier")
+                self.addXmlElement(
+                    xmlterm, "identifier", self.getSTinfo(self.token, "used")
+                )
         # parse unaryOp term
         elif self.token in ["-", "~"]:
             self.addXmlElement(xmlterm, "symbol")
@@ -413,8 +447,11 @@ class CompilationEngine:
     """ below are helper functions """
 
     # parse the current token to xml element
-    def addXmlElement(self, parent: ET.Element, type: str) -> None:
-        element = ET.SubElement(parent, type)
+    def addXmlElement(self, parent: ET.Element, type: str, STinfo: str = None) -> None:
+        if STinfo:
+            element = ET.SubElement(parent, type, attrib={"STinfo": STinfo})
+        else:
+            element = ET.SubElement(parent, type)
         element.text = self.token
 
     # write the formatted xml data to file
@@ -441,3 +478,11 @@ class CompilationEngine:
     def advance(self) -> None:
         self.position += 1
         (self.token, self.tokentype) = self.tokenstream[self.position]
+
+    # compose symbol table information of given name
+    # first find in subroutine-level, then class-level
+    def getSTinfo(self, name: str, usage: str) -> str:
+        ST = self.subroutineST if self.subroutineST.hasSymbol(name) else self.classST
+        return " | ".join(
+            [name, ST.typeOf(name), ST.kindOf(name), str(ST.indexOf(name)), usage]
+        )
