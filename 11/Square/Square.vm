@@ -1,0 +1,421 @@
+
+// define function Square.new
+
+function Square.new 0
+push constant 3
+
+// call function Memory.alloc
+
+call Memory.alloc 1
+pop pointer 0
+push argument 0
+pop this 0
+push argument 1
+pop this 1
+push argument 2
+pop this 2
+push pointer 0
+
+// call function Square.draw
+
+call Square.draw 1
+pop temp 0
+push pointer 0
+return
+
+// define function Square.dispose
+
+function Square.dispose 0
+push argument 0
+pop pointer 0
+push pointer 0
+
+// call function Memory.deAlloc
+
+call Memory.deAlloc 1
+pop temp 0
+push constant 0
+return
+
+// define function Square.draw
+
+function Square.draw 0
+push argument 0
+pop pointer 0
+push constant 1
+neg
+
+// call function Screen.setColor
+
+call Screen.setColor 1
+pop temp 0
+push this 0
+push this 1
+push this 0
+push this 2
+add
+push this 1
+push this 2
+add
+
+// call function Screen.drawRectangle
+
+call Screen.drawRectangle 4
+pop temp 0
+push constant 0
+return
+
+// define function Square.erase
+
+function Square.erase 0
+push argument 0
+pop pointer 0
+push constant 0
+
+// call function Screen.setColor
+
+call Screen.setColor 1
+pop temp 0
+push this 0
+push this 1
+push this 0
+push this 2
+add
+push this 1
+push this 2
+add
+
+// call function Screen.drawRectangle
+
+call Screen.drawRectangle 4
+pop temp 0
+push constant 0
+return
+
+// define function Square.incSize
+
+function Square.incSize 0
+push argument 0
+pop pointer 0
+push this 1
+push this 2
+add
+push constant 254
+lt
+push this 0
+push this 2
+add
+push constant 510
+lt
+and
+not
+if-goto ifFalse.0
+push pointer 0
+
+// call function Square.erase
+
+call Square.erase 1
+pop temp 0
+push this 2
+push constant 2
+add
+pop this 2
+push pointer 0
+
+// call function Square.draw
+
+call Square.draw 1
+pop temp 0
+goto ifEnd.0
+label ifFalse.0
+label ifEnd.0
+push constant 0
+return
+
+// define function Square.decSize
+
+function Square.decSize 0
+push argument 0
+pop pointer 0
+push this 2
+push constant 2
+gt
+not
+if-goto ifFalse.1
+push pointer 0
+
+// call function Square.erase
+
+call Square.erase 1
+pop temp 0
+push this 2
+push constant 2
+sub
+pop this 2
+push pointer 0
+
+// call function Square.draw
+
+call Square.draw 1
+pop temp 0
+goto ifEnd.1
+label ifFalse.1
+label ifEnd.1
+push constant 0
+return
+
+// define function Square.moveUp
+
+function Square.moveUp 0
+push argument 0
+pop pointer 0
+push this 1
+push constant 1
+gt
+not
+if-goto ifFalse.2
+push constant 0
+
+// call function Screen.setColor
+
+call Screen.setColor 1
+pop temp 0
+push this 0
+push this 1
+push this 2
+add
+push constant 1
+sub
+push this 0
+push this 2
+add
+push this 1
+push this 2
+add
+
+// call function Screen.drawRectangle
+
+call Screen.drawRectangle 4
+pop temp 0
+push this 1
+push constant 2
+sub
+pop this 1
+push constant 1
+neg
+
+// call function Screen.setColor
+
+call Screen.setColor 1
+pop temp 0
+push this 0
+push this 1
+push this 0
+push this 2
+add
+push this 1
+push constant 1
+add
+
+// call function Screen.drawRectangle
+
+call Screen.drawRectangle 4
+pop temp 0
+goto ifEnd.2
+label ifFalse.2
+label ifEnd.2
+push constant 0
+return
+
+// define function Square.moveDown
+
+function Square.moveDown 0
+push argument 0
+pop pointer 0
+push this 1
+push this 2
+add
+push constant 254
+lt
+not
+if-goto ifFalse.3
+push constant 0
+
+// call function Screen.setColor
+
+call Screen.setColor 1
+pop temp 0
+push this 0
+push this 1
+push this 0
+push this 2
+add
+push this 1
+push constant 1
+add
+
+// call function Screen.drawRectangle
+
+call Screen.drawRectangle 4
+pop temp 0
+push this 1
+push constant 2
+add
+pop this 1
+push constant 1
+neg
+
+// call function Screen.setColor
+
+call Screen.setColor 1
+pop temp 0
+push this 0
+push this 1
+push this 2
+add
+push constant 1
+sub
+push this 0
+push this 2
+add
+push this 1
+push this 2
+add
+
+// call function Screen.drawRectangle
+
+call Screen.drawRectangle 4
+pop temp 0
+goto ifEnd.3
+label ifFalse.3
+label ifEnd.3
+push constant 0
+return
+
+// define function Square.moveLeft
+
+function Square.moveLeft 0
+push argument 0
+pop pointer 0
+push this 0
+push constant 1
+gt
+not
+if-goto ifFalse.4
+push constant 0
+
+// call function Screen.setColor
+
+call Screen.setColor 1
+pop temp 0
+push this 0
+push this 2
+add
+push constant 1
+sub
+push this 1
+push this 0
+push this 2
+add
+push this 1
+push this 2
+add
+
+// call function Screen.drawRectangle
+
+call Screen.drawRectangle 4
+pop temp 0
+push this 0
+push constant 2
+sub
+pop this 0
+push constant 1
+neg
+
+// call function Screen.setColor
+
+call Screen.setColor 1
+pop temp 0
+push this 0
+push this 1
+push this 0
+push constant 1
+add
+push this 1
+push this 2
+add
+
+// call function Screen.drawRectangle
+
+call Screen.drawRectangle 4
+pop temp 0
+goto ifEnd.4
+label ifFalse.4
+label ifEnd.4
+push constant 0
+return
+
+// define function Square.moveRight
+
+function Square.moveRight 0
+push argument 0
+pop pointer 0
+push this 0
+push this 2
+add
+push constant 510
+lt
+not
+if-goto ifFalse.5
+push constant 0
+
+// call function Screen.setColor
+
+call Screen.setColor 1
+pop temp 0
+push this 0
+push this 1
+push this 0
+push constant 1
+add
+push this 1
+push this 2
+add
+
+// call function Screen.drawRectangle
+
+call Screen.drawRectangle 4
+pop temp 0
+push this 0
+push constant 2
+add
+pop this 0
+push constant 1
+neg
+
+// call function Screen.setColor
+
+call Screen.setColor 1
+pop temp 0
+push this 0
+push this 2
+add
+push constant 1
+sub
+push this 1
+push this 0
+push this 2
+add
+push this 1
+push this 2
+add
+
+// call function Screen.drawRectangle
+
+call Screen.drawRectangle 4
+pop temp 0
+goto ifEnd.5
+label ifFalse.5
+label ifEnd.5
+push constant 0
+return

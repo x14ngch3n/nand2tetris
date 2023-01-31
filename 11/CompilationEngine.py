@@ -41,9 +41,9 @@ class CompilationEngine:
     def compileClass(self) -> None:
         self.advance()
         # initialize symbol tables with className
-        self.classname = self.token
-        self.classST = SymbolTable(self.classname)
-        self.subroutineST = SymbolTable(self.classname)
+        self.className = self.token
+        self.classST = SymbolTable(self.className)
+        self.subroutineST = SymbolTable(self.className)
         self.advance()
         # parse zero or more classVarDec
         self.advance()
@@ -51,8 +51,8 @@ class CompilationEngine:
             self.compileClassVarDec()
         # parse zero or more subroutineDec
         while self.token in ["constructor", "function", "method"]:
+            self.subroutineType = self.token
             self.compileSubroutineDec()
-        # parse "}"
 
     # compile a static variable or field declaration
     def compileClassVarDec(self) -> None:
@@ -74,15 +74,10 @@ class CompilationEngine:
     def compileSubroutineDec(self) -> None:
         # reset subroutine-level symbol table
         self.subroutineST.reset()
-        # add this pointer to symbol table
-        isMethod = self.token == "method"
-        if isMethod:
-            self.subroutineST.define("this", self.classname, "arg")
         self.advance(2)
         self.subroutineName = self.token
         self.advance(2)
         self.compileParameterList()
-
         # parse subroutineBody
         self.advance()
         self.compileSubroutineBody()
@@ -110,8 +105,19 @@ class CompilationEngine:
             self.compileVarDec()
         # write funtion definition
         self.writer.writeFunction(
-            f"{self.classname}.{self.subroutineName}", self.subroutineST.varCount("var")
+            f"{self.className}.{self.subroutineName}", self.subroutineST.varCount("var")
         )
+        # add subroutine specific prelogue code
+        if self.subroutineType == "constructor":
+            # allocate dynamic memory for field varailes
+            self.writer.writePush("constant", self.classST.varCount("field"))
+            self.writer.writeCall("Memory.alloc", 1)
+            self.writer.writePop("pointer", 0)
+        elif self.subroutineType == "method":
+            self.subroutineST.define("this", self.className, "arg")
+            # assign argument 0 to this pointer
+            self.writer.writePush("argument", 0)
+            self.writer.writePop("pointer", 0)
         # parse statements
         self.compileStatements()
 
@@ -280,17 +286,35 @@ class CompilationEngine:
                 self.advance()
                 self.compileExpression()
                 # parse "]"
+            # parse subroutineName(expressionList)
             elif next_token == "(":
+                subroutineName = self.token
                 self.advance(2)
                 nArgs = self.compileExpressionList()
+                self.writer.writePush("pointer", 0)
+                self.writer.writeCall(f"{self.className}.{subroutineName}", nArgs + 1)
             # parse (className | varName).subroutineName(expressionList)
             elif next_token == ".":
                 classNameorvarName = self.token
                 self.advance(2)
                 subroutineName = self.token
                 self.advance(2)
-                nArgs = self.compileExpressionList()
-                self.writer.writeCall(f"{classNameorvarName}.{subroutineName}", nArgs)
+                segment, index = self.mapVariable(classNameorvarName)
+                # method call: varName.subroutineName(expressionList)
+                if segment:
+                    self.writer.writePush(segment, index)
+                    nArgs = self.compileExpressionList()
+                    # get className of varName
+                    className = self.subroutineST.typeOf(
+                        classNameorvarName
+                    ) or self.classST.typeOf(classNameorvarName)
+                    self.writer.writeCall(f"{className}.{subroutineName}", nArgs + 1)
+                # do function call: className.subroutineName(expressionList)
+                else:
+                    nArgs = self.compileExpressionList()
+                    self.writer.writeCall(
+                        f"{classNameorvarName}.{subroutineName}", nArgs
+                    )
             # parse varName
             else:
                 name = self.token
@@ -341,14 +365,17 @@ class CompilationEngine:
         self.position += step
         (self.token, self.tokentype) = self.tokenstream[self.position]
 
+    # map variable in symbol table to VM segment format
     def mapVariable(self, name: str):
         if self.subroutineST.hasSymbol(name):
             if self.subroutineST.kindOf(name) == "var":
                 return "local", self.subroutineST.indexOf(name)
             elif self.subroutineST.kindOf(name) == "arg":
                 return "argument", self.subroutineST.indexOf(name)
-        else:
+        elif self.classST.hasSymbol(name):
             if self.classST.kindOf(name) == "static":
                 return "static", self.classST.indexOf(name)
             elif self.classST.kindOf(name) == "field":
                 return "this", self.classST.indexOf(name)
+        else:
+            return None, None

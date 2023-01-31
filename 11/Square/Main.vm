@@ -1,0 +1,23 @@
+
+// define function Main.main
+
+function Main.main 1
+
+// call function SquareGame.new
+
+call SquareGame.new 0
+pop local 0
+push local 0
+
+// call function SquareGame.run
+
+call SquareGame.run 1
+pop temp 0
+push local 0
+
+// call function SquareGame.dispose
+
+call SquareGame.dispose 1
+pop temp 0
+push constant 0
+return
