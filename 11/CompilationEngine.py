@@ -13,6 +13,23 @@ class CompilationEngine:
         self.tokenizer = JackTokenizer(inputfile)
         self.writer = VMWriter(outputfile)
         self.getTokenStream()
+        # record while and if statements label
+        self.whileBegin = "whileBegin.0"
+        self.whileEnd = "whileEnd.0"
+        self.ifFalse = "ifFalse.0"
+        self.ifEnd = "ifEnd.0"
+
+    # update label counter each time
+    def __getattribute__(self, name: str) -> str:
+        if name in ["whileBegin", "whileEnd", "ifFalse", "ifEnd"]:
+            label = super().__getattribute__(name)
+            newlabel = ".".join(
+                [label.split(".")[0], str(int(label.split(".")[1]) + 1)]
+            )
+            super().__setattr__(name, newlabel)
+            return label
+        else:
+            return super().__getattribute__(name)
 
     """
     compilexxx methods: each method is called only if the current token is xxx
@@ -62,19 +79,12 @@ class CompilationEngine:
         if isMethod:
             self.subroutineST.define("this", self.classname, "arg")
         self.advance(2)
-        subroutineName = self.token
+        self.subroutineName = self.token
         self.advance(2)
         self.compileParameterList()
-        # write funtion definition
-        self.writer.writeFunction(
-            f"{self.classname}.{subroutineName}", self.subroutineST.varCount("arg")
-        )
+
         # parse subroutineBody
         self.advance()
-        # align this pointer with the object's base address
-        if isMethod:
-            self.writer.writePush("argument", 0)
-            self.writer.writePop("pointer", 0)
         self.compileSubroutineBody()
         self.advance()
 
@@ -98,6 +108,10 @@ class CompilationEngine:
         self.advance()
         while self.token == "var":
             self.compileVarDec()
+        # write funtion definition
+        self.writer.writeFunction(
+            f"{self.classname}.{self.subroutineName}", self.subroutineST.varCount("var")
+        )
         # parse statements
         self.compileStatements()
 
@@ -139,10 +153,9 @@ class CompilationEngine:
 
     # compile a let statment
     def compileLet(self) -> None:
-        # parse "let"
-        # parse varName
         self.advance()
-        # parse possibly "["
+        name = self.token
+        # parse possibly array access
         self.advance()
         if self.token == "[":
             # parse expression
@@ -150,56 +163,56 @@ class CompilationEngine:
             self.compileExpression()
             # parse "]"
             self.advance()
-        # parse "="
-        # parse expression
         self.advance()
         self.compileExpression()
-        # parse ";"
+        # assign expression result to varName
+        segment, index = self.mapVariable(name)
+        self.writer.writePop(segment, index)
         self.advance()
 
     # compile a if statment, possibly with a trailing else clause
     def compileIf(self) -> None:
-        # parse "if"
-        # parse "("
-        self.advance()
-        # parse expression
-        self.advance()
+        # fetch label
+        ifFalse = self.ifFalse
+        ifEnd = self.ifEnd
+        self.advance(2)
         self.compileExpression()
-        # parse ")"
-        # parse "{"
-        self.advance()
-        # parse statements
-        self.advance()
+        # check if condition
+        self.writer.writeLine("not")
+        self.writer.writeIf(ifFalse)
+        self.advance(2)
         self.compileStatements()
-        # parse "}"
+        # finish if True expression
+        self.writer.writeGoto(ifEnd)
         # parse possibly else clause
         self.advance()
         if self.token == "else":
-            # parse "else"
-            # parse "{"
-            self.advance()
-            # parse statements
-            self.advance()
+            self.advance(2)
+            self.writer.writeLabel(ifFalse)
             self.compileStatements()
-            # parse "}"
-            # next token
             self.advance()
+        else:
+            # insert a fake ifFalse label
+            self.writer.writeLabel(ifFalse)
+        self.writer.writeLabel(ifEnd)
 
     # compile a while statment
     def compileWhile(self) -> None:
-        # parse "while"
-        # parse "("
-        self.advance()
-        # parse expression
-        self.advance()
+        # fetch label
+        whileBegin = self.whileBegin
+        whileEnd = self.whileEnd
+        # write begin label
+        self.writer.writeLabel(whileBegin)
+        self.advance(2)
         self.compileExpression()
-        # parse ")"
-        # parse "{"
-        self.advance()
-        # parse statements
-        self.advance()
+        # check while condition
+        self.writer.writeLine("not")
+        self.writer.writeIf(whileEnd)
+        self.advance(2)
         self.compileStatements()
-        # parse "}"
+        self.writer.writeGoto(whileBegin)
+        # write end label
+        self.writer.writeLabel(whileEnd)
         self.advance()
 
     # compile a do statment
@@ -245,13 +258,20 @@ class CompilationEngine:
         # parse stringConstant
         elif self.tokentype == "STRING_CONST":
             pass
-        # parse keywordConstant: "true", "false", "null", "this"
+        # parse keywordConstant
         elif self.tokentype == "KEYWORD":
-            pass
+            if self.token == "true":
+                self.writer.writePush("constant", 1)
+                self.writer.writeLine("neg")
+            elif self.token in ["false", "null"]:
+                self.writer.writePush("constant", 0)
+            elif self.token == "this":
+                self.writer.writePush("pointer", 0)
         # parse varName, varName[expression], subroutineCall
         elif self.tokentype == "IDENTIFIER":
             # single lookahead
             next_token = self.tokenstream[self.position + 1][0]
+            # parse array access
             if next_token == "[":
                 # parse varName
                 # parse "["
@@ -273,13 +293,17 @@ class CompilationEngine:
                 self.writer.writeCall(f"{classNameorvarName}.{subroutineName}", nArgs)
             # parse varName
             else:
-                pass
+                name = self.token
+                segment, index = self.mapVariable(name)
+                self.writer.writePush(segment, index)
         # parse unaryOp term
         elif self.token in ["-", "~"]:
+            unaryOp = self.token
             self.advance()
             self.compileTerm()
+            self.writer.writeLine("neg" if unaryOp == "-" else "not")
             return
-        # parse (pression)
+        # parse (expression)
         elif self.token == "(":
             self.advance()
             self.compileExpression()
@@ -316,3 +340,15 @@ class CompilationEngine:
     def advance(self, step: int = 1) -> None:
         self.position += step
         (self.token, self.tokentype) = self.tokenstream[self.position]
+
+    def mapVariable(self, name: str):
+        if self.subroutineST.hasSymbol(name):
+            if self.subroutineST.kindOf(name) == "var":
+                return "local", self.subroutineST.indexOf(name)
+            elif self.subroutineST.kindOf(name) == "arg":
+                return "argument", self.subroutineST.indexOf(name)
+        else:
+            if self.classST.kindOf(name) == "static":
+                return "static", self.classST.indexOf(name)
+            elif self.classST.kindOf(name) == "field":
+                return "this", self.classST.indexOf(name)

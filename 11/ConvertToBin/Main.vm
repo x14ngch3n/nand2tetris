@@ -1,0 +1,142 @@
+
+// define function Main.main
+
+function Main.main 1
+push constant 8001
+push constant 16
+push constant 1
+neg
+
+// call function Main.fillMemory
+
+call Main.fillMemory 3
+pop temp 0
+push constant 8000
+
+// call function Memory.peek
+
+call Memory.peek 1
+pop local 0
+push local 0
+
+// call function Main.convert
+
+call Main.convert 1
+pop temp 0
+push constant 0
+return
+
+// define function Main.convert
+
+function Main.convert 3
+push constant 1
+neg
+pop local 2
+label whileBegin.0
+push local 2
+not
+if-goto whileEnd.0
+push local 1
+push constant 1
+add
+pop local 1
+push local 0
+
+// call function Main.nextMask
+
+call Main.nextMask 1
+pop local 0
+push local 1
+push constant 16
+gt
+not
+not
+if-goto ifFalse.0
+push argument 0
+push local 0
+and
+push constant 0
+eq
+not
+not
+if-goto ifFalse.1
+push constant 8000
+push local 1
+add
+push constant 1
+
+// call function Memory.poke
+
+call Memory.poke 2
+pop temp 0
+goto ifEnd.1
+label ifFalse.1
+push constant 8000
+push local 1
+add
+push constant 0
+
+// call function Memory.poke
+
+call Memory.poke 2
+pop temp 0
+label ifEnd.1
+goto ifEnd.0
+label ifFalse.0
+push constant 0
+pop local 2
+label ifEnd.0
+goto whileBegin.0
+label whileEnd.0
+push constant 0
+return
+
+// define function Main.nextMask
+
+function Main.nextMask 0
+push argument 0
+push constant 0
+eq
+not
+if-goto ifFalse.2
+push constant 1
+return
+goto ifEnd.2
+label ifFalse.2
+push argument 0
+push constant 2
+
+// call function Math.multiply
+
+call Math.multiply 2
+return
+label ifEnd.2
+
+// define function Main.fillMemory
+
+function Main.fillMemory 0
+label whileBegin.1
+push argument 1
+push constant 0
+gt
+not
+if-goto whileEnd.1
+push argument 0
+push argument 2
+
+// call function Memory.poke
+
+call Memory.poke 2
+pop temp 0
+push argument 1
+push constant 1
+sub
+pop argument 1
+push argument 0
+push constant 1
+add
+pop argument 0
+goto whileBegin.1
+label whileEnd.1
+push constant 0
+return

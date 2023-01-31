@@ -9,43 +9,67 @@ class VMWriter:
 
     # Write a VM push command
     def writePush(self, segment: str, index: str) -> None:
-        self.outputstream.write(f"push {segment} {index}\n")
+        self.writeLine(f"push {segment} {index}")
 
     # Write a VM pop command
     def writePop(self, segment: str, index: str) -> None:
-        self.outputstream.write(f"pop {segment} {index}\n")
+        self.writeLine(f"pop {segment} {index}")
 
     # Write a VM arithmetic-logical command
     def writeArithmetic(self, command: str) -> None:
         if command == "+":
-            self.outputstream.write("add\n")
+            self.writeLine("add")
+        elif command == "-":
+            self.writeLine("sub")
         elif command == "*":
-            self.outputstream.write("call Math.multiply 2\n")
+            self.writeCall("Math.multiply", 2)
+        elif command == ">":
+            self.writeLine("gt")
+        elif command == "<":
+            self.writeLine("lt")
+        elif command == "=":
+            self.writeLine("eq")
+        elif command == "&":
+            self.writeLine("and")
+        elif command == "|":
+            self.writeLine("or")
 
     # Write a VM label command
     def writeLabel(self, label: str) -> None:
-        pass
+        self.writeLine(f"label {label}")
 
     # Write a VM goto command
     def writeGoto(self, label: str) -> None:
-        pass
+        self.writeLine(f"goto {label}")
 
     # Write a VM if-goto command
     def writeIf(self, label: str) -> None:
-        pass
+        self.writeLine(f"if-goto {label}")
 
     # Write a VM call command
     def writeCall(self, name: str, nArgs: int) -> None:
-        self.outputstream.write(f"call {name} {nArgs}\n")
+        self.writeComment(f"call function {name}")
+        self.writeLine(f"call {name} {nArgs}")
 
     # Write a VM function command
     def writeFunction(self, name: str, nVars: int) -> None:
-        self.outputstream.write(f"function {name} {str(nVars)}\n")
+        self.writeComment(f"define function {name}")
+        self.writeLine(f"function {name} {str(nVars)}")
 
     # Write a VM return command
     def writeReturn(self) -> None:
-        self.outputstream.write("return\n")
+        self.writeLine("return")
 
     # Close the output stream
     def close(self) -> None:
-        pass
+        self.outputstream.close()
+
+    """ below are helper functions """
+
+    def writeLine(self, code: str = "") -> None:
+        self.outputstream.write(code + "\n")
+
+    def writeComment(self, comment: str) -> None:
+        self.writeLine()
+        self.writeLine(f"// {comment}")
+        self.writeLine()
