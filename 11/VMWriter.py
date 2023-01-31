@@ -23,6 +23,8 @@ class VMWriter:
             self.writeLine("sub")
         elif command == "*":
             self.writeCall("Math.multiply", 2)
+        elif command == "/":
+            self.writeCall("Math.divide", 2)
         elif command == ">":
             self.writeLine("gt")
         elif command == "<":

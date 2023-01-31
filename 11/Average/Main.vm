@@ -1,0 +1,326 @@
+
+// define function Main.main
+
+function Main.main 4
+push constant 18
+
+// call function String.new
+
+call String.new 1
+push constant 72
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 111
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 119
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 32
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 109
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 97
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 110
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 121
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 32
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 110
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 117
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 109
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 98
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 101
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 114
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 115
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 63
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 32
+
+// call function String.appendChar
+
+call String.appendChar 2
+
+// call function Keyboard.readInt
+
+call Keyboard.readInt 1
+pop local 1
+push local 1
+
+// call function Array.new
+
+call Array.new 1
+pop local 0
+push constant 0
+pop local 2
+label whileBegin.0
+push local 2
+push local 1
+lt
+not
+if-goto whileEnd.0
+push local 0
+push local 2
+add
+push constant 16
+
+// call function String.new
+
+call String.new 1
+push constant 69
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 110
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 116
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 101
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 114
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 32
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 97
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 32
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 110
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 117
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 109
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 98
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 101
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 114
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 58
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 32
+
+// call function String.appendChar
+
+call String.appendChar 2
+
+// call function Keyboard.readInt
+
+call Keyboard.readInt 1
+pop temp 0
+pop pointer 1
+push temp 0
+pop that 0
+push local 3
+push local 0
+push local 2
+add
+pop pointer 1
+push that 0
+add
+pop local 3
+push local 2
+push constant 1
+add
+pop local 2
+goto whileBegin.0
+label whileEnd.0
+push constant 15
+
+// call function String.new
+
+call String.new 1
+push constant 84
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 104
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 101
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 32
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 97
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 118
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 101
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 114
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 97
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 103
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 101
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 32
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 105
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 115
+
+// call function String.appendChar
+
+call String.appendChar 2
+push constant 32
+
+// call function String.appendChar
+
+call String.appendChar 2
+
+// call function Output.printString
+
+call Output.printString 1
+pop temp 0
+push local 3
+push local 1
+
+// call function Math.divide
+
+call Math.divide 2
+
+// call function Output.printInt
+
+call Output.printInt 1
+pop temp 0
+push constant 0
+return

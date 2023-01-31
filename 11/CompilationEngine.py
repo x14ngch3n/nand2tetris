@@ -157,26 +157,39 @@ class CompilationEngine:
             elif self.token == "return":
                 self.compileReturn()
 
-    # compile a let statment
+    # compile a let statement
     def compileLet(self) -> None:
         self.advance()
         name = self.token
-        # parse possibly array access
         self.advance()
+        segment, index = self.mapVariable(name)
+        # parse array access
         if self.token == "[":
-            # parse expression
+            # push array
+            self.writer.writePush(segment, index)
             self.advance()
             self.compileExpression()
-            # parse "]"
+            # add array and expression
+            self.writer.writeArithmetic("+")
+            self.advance(2)
+            self.compileExpression()
+            # save right value to temp 0
+            self.writer.writePop("temp", 0)
+            # assign that pointer
+            self.writer.writePop("pointer", 1)
+            # push right value
+            self.writer.writePush("temp", 0)
+            # store right value to the element
+            self.writer.writePop("that", 0)
+        # parse simple let statement
+        else:
             self.advance()
-        self.advance()
-        self.compileExpression()
-        # assign expression result to varName
-        segment, index = self.mapVariable(name)
-        self.writer.writePop(segment, index)
+            self.compileExpression()
+            # assign expression result to varName
+            self.writer.writePop(segment, index)
         self.advance()
 
-    # compile a if statment, possibly with a trailing else clause
+    # compile a if statement, possibly with a trailing else clause
     def compileIf(self) -> None:
         # fetch label
         ifFalse = self.ifFalse
@@ -202,7 +215,7 @@ class CompilationEngine:
             self.writer.writeLabel(ifFalse)
         self.writer.writeLabel(ifEnd)
 
-    # compile a while statment
+    # compile a while statement
     def compileWhile(self) -> None:
         # fetch label
         whileBegin = self.whileBegin
@@ -221,7 +234,7 @@ class CompilationEngine:
         self.writer.writeLabel(whileEnd)
         self.advance()
 
-    # compile a do statment
+    # compile a do statement
     def compileDo(self) -> None:
         self.advance()
         self.compileTerm()
@@ -263,7 +276,14 @@ class CompilationEngine:
             self.writer.writePush("constant", self.token)
         # parse stringConstant
         elif self.tokentype == "STRING_CONST":
-            pass
+            # create string object
+            string = self.token
+            self.writer.writePush("constant", len(string))
+            self.writer.writeCall("String.new", 1)
+            # append characters
+            for char in string:
+                self.writer.writePush("constant", ord(char))
+                self.writer.writeCall("String.appendChar", 2)
         # parse keywordConstant
         elif self.tokentype == "KEYWORD":
             if self.token == "true":
@@ -279,13 +299,17 @@ class CompilationEngine:
             next_token = self.tokenstream[self.position + 1][0]
             # parse array access
             if next_token == "[":
-                # parse varName
-                # parse "["
-                self.advance()
-                # parse expression
-                self.advance()
+                # push array
+                segment, index = self.mapVariable(self.token)
+                self.writer.writePush(segment, index)
+                self.advance(2)
                 self.compileExpression()
-                # parse "]"
+                # add array and expression
+                self.writer.writeArithmetic("+")
+                # assign that pointer
+                self.writer.writePop("pointer", 1)
+                # de-reference that pointer
+                self.writer.writePush("that", 0)
             # parse subroutineName(expressionList)
             elif next_token == "(":
                 subroutineName = self.token
