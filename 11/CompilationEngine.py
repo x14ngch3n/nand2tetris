@@ -1,9 +1,9 @@
 # a recursive top-down parser
 # serves as the main module that drives the overall compilation process
 
-import xml.etree.ElementTree as ET
 from JackTokenizer import JackTokenizer
 from SymbolTable import SymbolTable
+from VMWriter import VMWriter
 
 
 class CompilationEngine:
@@ -11,7 +11,7 @@ class CompilationEngine:
     # the next routine called by the JackAnalyzer module must be compileClass
     def __init__(self, inputfile: str, outputfile: str) -> None:
         self.tokenizer = JackTokenizer(inputfile)
-        self.outputfile = outputfile
+        self.writer = VMWriter(outputfile)
         self.getTokenStream()
 
     """
@@ -20,449 +20,287 @@ class CompilationEngine:
     advance the tokenizer exactly beyond these tokens
     """
 
-    # compile a complete class, compile unit of CompilationEngine
+    # compile a complete class. No code is generated
     def compileClass(self) -> None:
-        # initialize the xml root element
-        xmlclass = ET.Element("class")
-        self.xmlclass = xmlclass
-        # parse "class"
-        self.addXmlElement(xmlclass, "keyword")
-        # parse className
         self.advance()
-        self.addXmlElement(xmlclass, "identifier")
-        # create class-level symbol table and subroutine-level symbol table
-        self.classST = SymbolTable(self.token)
-        self.subroutineST = SymbolTable(self.token)
-        # parse "{"
+        # initialize symbol tables with className
+        self.classname = self.token
+        self.classST = SymbolTable(self.classname)
+        self.subroutineST = SymbolTable(self.classname)
         self.advance()
-        self.addXmlElement(xmlclass, "symbol")
         # parse zero or more classVarDec
         self.advance()
         while self.token in ["static", "field"]:
-            self.compileClassVarDec(xmlclass)
+            self.compileClassVarDec()
         # parse zero or more subroutineDec
         while self.token in ["constructor", "function", "method"]:
-            self.compileSubroutineDec(xmlclass)
+            self.compileSubroutineDec()
         # parse "}"
-        self.addXmlElement(xmlclass, "symbol")
 
     # compile a static variable or field declaration
-    def compileClassVarDec(self, xmlclass: ET.Element) -> None:
-        # create new xml element
-        xmlclassVarDec = ET.SubElement(xmlclass, "classVarDec")
-        # parse "static" or "field"
-        self.addXmlElement(xmlclassVarDec, "keyword")
+    def compileClassVarDec(self) -> None:
         kind = self.token
-        # parse type
         self.advance()
-        self.addXmlElement(xmlclassVarDec, self.tokentype.lower())
         type = self.token
         # parse one or more varNames
         self.advance()
         while not self.token == ";":
-            # parse varName
             name = self.token
-            # add to class-level symbol table
+            # add variable to class-level symbol table
             self.classST.define(name, type, kind)
-            self.addXmlElement(
-                xmlclassVarDec, "identifier", self.getSTinfo(name, "declared")
-            )
-            # parse possibly ","
             self.advance()
             if self.token == ",":
-                self.addXmlElement(xmlclassVarDec, "symbol")
                 self.advance()
-        # parse ";"
-        self.addXmlElement(xmlclassVarDec, "symbol")
-        # next token
         self.advance()
 
     # compile a complete method, function or constructor
-    def compileSubroutineDec(self, xmlclass: ET.Element) -> None:
-        # create new xml element
-        xmlsubroutineDec = ET.SubElement(xmlclass, "subroutineDec")
+    def compileSubroutineDec(self) -> None:
         # reset subroutine-level symbol table
         self.subroutineST.reset()
-        # parse "constructor", "function" or "method"
-        self.addXmlElement(xmlsubroutineDec, "keyword")
-        # add implicit variable: this pointer
-        if self.token == "method":
-            self.subroutineST.define("this", self.subroutineST.classname, "arg")
-        # parse "void" or type
-        self.advance()
-        self.addXmlElement(xmlsubroutineDec, self.tokentype.lower())
-        # parse subroutineName
-        self.advance()
-        self.addXmlElement(xmlsubroutineDec, "identifier")
-        # parse "("
-        self.advance()
-        self.addXmlElement(xmlsubroutineDec, "symbol")
-        # parse parameterList
-        self.advance()
-        self.compileParameterList(xmlsubroutineDec)
-        # parse ")"
-        self.addXmlElement(xmlsubroutineDec, "symbol")
+        # add this pointer to symbol table
+        isMethod = self.token == "method"
+        if isMethod:
+            self.subroutineST.define("this", self.classname, "arg")
+        self.advance(2)
+        subroutineName = self.token
+        self.advance(2)
+        self.compileParameterList()
+        # write funtion definition
+        self.writer.writeFunction(
+            f"{self.classname}.{subroutineName}", self.subroutineST.varCount("arg")
+        )
         # parse subroutineBody
         self.advance()
-        self.compileSubroutineBody(xmlsubroutineDec)
-        # next token
+        # align this pointer with the object's base address
+        if isMethod:
+            self.writer.writePush("argument", 0)
+            self.writer.writePop("pointer", 0)
+        self.compileSubroutineBody()
         self.advance()
 
     # compile a possibly empty parameter lists
     # Does not handle the enclosing parentheses tokens: ( and )
-    def compileParameterList(self, xmlsubroutine: ET.Element) -> None:
-        # create new xml element
-        xmlparameterList = ET.SubElement(xmlsubroutine, "parameterList")
+    def compileParameterList(self) -> None:
         # parse zero or more arguments
         while self.tokentype in ["KEYWORD", "IDENTIFIER"]:
-            # parse type
-            self.addXmlElement(xmlparameterList, self.tokentype.lower())
             type = self.token
-            # parse varName
             self.advance()
-            # add parameter to symbol table
             name = self.token
+            # add parameter to symbol table
             self.subroutineST.define(name, type, "arg")
-            self.addXmlElement(
-                xmlparameterList, "identifier", self.getSTinfo(name, "declared")
-            )
-            # parse possibly ","
             self.advance()
             if self.token == ",":
-                self.addXmlElement(xmlparameterList, "symbol")
                 self.advance()
 
     # compile a subroutine's body
-    def compileSubroutineBody(self, xmlsubroutine: ET.Element) -> None:
-        # create new xml element
-        xmlsubroutineBody = ET.SubElement(xmlsubroutine, "subroutineBody")
-        # parse "{"
-        self.addXmlElement(xmlsubroutineBody, "symbol")
+    def compileSubroutineBody(self) -> None:
         # parse zero or more varDec
         self.advance()
         while self.token == "var":
-            self.compileVarDec(xmlsubroutineBody)
+            self.compileVarDec()
         # parse statements
-        self.compileStatements(xmlsubroutineBody)
-        # parse "}"
-        self.addXmlElement(xmlsubroutineBody, "symbol")
+        self.compileStatements()
 
-    # compile a var declaration
-    def compileVarDec(self, xmlsubroutineBody: ET.Element) -> None:
-        # create new xml element
-        xmlvarDec = ET.SubElement(xmlsubroutineBody, "varDec")
-        # parse "var"
-        self.addXmlElement(xmlvarDec, "keyword")
-        # parse type
+    # compile a var declaration, possibly with multiple varName
+    def compileVarDec(self) -> None:
         self.advance()
-        self.addXmlElement(xmlvarDec, self.tokentype.lower())
         type = self.token
         # parse one or more varNames(using do-while loop)
         while True:
-            # parse varName
             self.advance()
             name = self.token
             # add local variable to symbol table
             self.subroutineST.define(name, type, "var")
-            self.addXmlElement(
-                xmlvarDec, "identifier", self.getSTinfo(name, "declared")
-            )
-            # parse possibly ","
             self.advance()
-            if self.token == ",":
-                self.addXmlElement(xmlvarDec, "symbol")
-            else:
+            if not self.token == ",":
                 break
-        # parse ";"
-        self.addXmlElement(xmlvarDec, "symbol")
-        # next token
         self.advance()
 
     # compile a sequence of statements
     # Does not handle the enclosing curly bracket tokens: { and }
-    def compileStatements(self, xmlparent: ET.Element) -> None:
-        # create new xml element
-        xmlstatements = ET.SubElement(xmlparent, "statements")
+    def compileStatements(self) -> None:
         # parse zero or more statements
         while self.token in ["let", "if", "while", "do", "return"]:
             # parse letStatement
             if self.token == "let":
-                self.compileLet(xmlstatements)
+                self.compileLet()
             # parse ifStatement
             elif self.token == "if":
-                self.compileIf(xmlstatements)
+                self.compileIf()
             # parse whileStatement
             elif self.token == "while":
-                self.compileWhile(xmlstatements)
+                self.compileWhile()
             # parse doStatement
             elif self.token == "do":
-                self.compileDo(xmlstatements)
+                self.compileDo()
             # parse returnStatement
             elif self.token == "return":
-                self.compileReturn(xmlstatements)
+                self.compileReturn()
 
     # compile a let statment
-    def compileLet(self, xmlstatements: ET.Element) -> None:
-        # create new xml element
-        xmlletStatement = ET.SubElement(xmlstatements, "letStatement")
+    def compileLet(self) -> None:
         # parse "let"
-        self.addXmlElement(xmlletStatement, "keyword")
         # parse varName
         self.advance()
-        self.addXmlElement(
-            xmlletStatement, "identifier", self.getSTinfo(self.token, "used")
-        )
         # parse possibly "["
         self.advance()
         if self.token == "[":
-            self.addXmlElement(xmlletStatement, "symbol")
             # parse expression
             self.advance()
-            self.compileExpression(xmlletStatement)
+            self.compileExpression()
             # parse "]"
-            self.addXmlElement(xmlletStatement, "symbol")
             self.advance()
         # parse "="
-        self.addXmlElement(xmlletStatement, "symbol")
         # parse expression
         self.advance()
-        self.compileExpression(xmlletStatement)
+        self.compileExpression()
         # parse ";"
-        self.addXmlElement(xmlletStatement, "symbol")
-        # next token
         self.advance()
 
     # compile a if statment, possibly with a trailing else clause
-    def compileIf(self, xmlstatements: ET.Element) -> None:
-        # create new xml element
-        xmlifStatement = ET.SubElement(xmlstatements, "ifStatement")
+    def compileIf(self) -> None:
         # parse "if"
-        self.addXmlElement(xmlifStatement, "keyword")
         # parse "("
         self.advance()
-        self.addXmlElement(xmlifStatement, "symbol")
         # parse expression
         self.advance()
-        self.compileExpression(xmlifStatement)
+        self.compileExpression()
         # parse ")"
-        self.addXmlElement(xmlifStatement, "symbol")
         # parse "{"
         self.advance()
-        self.addXmlElement(xmlifStatement, "symbol")
         # parse statements
         self.advance()
-        self.compileStatements(xmlifStatement)
+        self.compileStatements()
         # parse "}"
-        self.addXmlElement(xmlifStatement, "symbol")
         # parse possibly else clause
         self.advance()
         if self.token == "else":
             # parse "else"
-            self.addXmlElement(xmlifStatement, "keyword")
             # parse "{"
             self.advance()
-            self.addXmlElement(xmlifStatement, "symbol")
             # parse statements
             self.advance()
-            self.compileStatements(xmlifStatement)
+            self.compileStatements()
             # parse "}"
-            self.addXmlElement(xmlifStatement, "symbol")
             # next token
             self.advance()
 
     # compile a while statment
-    def compileWhile(self, xmlstatements: ET.Element) -> None:
-        # create new xml element
-        xmlwhileStatement = ET.SubElement(xmlstatements, "whileStatement")
+    def compileWhile(self) -> None:
         # parse "while"
-        self.addXmlElement(xmlwhileStatement, "keyword")
         # parse "("
         self.advance()
-        self.addXmlElement(xmlwhileStatement, "symbol")
         # parse expression
         self.advance()
-        self.compileExpression(xmlwhileStatement)
+        self.compileExpression()
         # parse ")"
-        self.addXmlElement(xmlwhileStatement, "symbol")
         # parse "{"
         self.advance()
-        self.addXmlElement(xmlwhileStatement, "symbol")
         # parse statements
         self.advance()
-        self.compileStatements(xmlwhileStatement)
+        self.compileStatements()
         # parse "}"
-        self.addXmlElement(xmlwhileStatement, "symbol")
-        # next token
         self.advance()
 
     # compile a do statment
-    def compileDo(self, xmlstatements: ET.Element) -> None:
-        # create new xml element
-        xmldoStatement = ET.SubElement(xmlstatements, "doStatement")
-        # parse "do"
-        self.addXmlElement(xmldoStatement, "keyword")
-        # parse subroutineCall
+    def compileDo(self) -> None:
         self.advance()
-        self.compileTerm(xmldoStatement, True)
-        # parse ";"
-        self.addXmlElement(xmldoStatement, "symbol")
-        # next token
+        self.compileTerm()
+        # discard unused return value
+        self.writer.writePop("temp", 0)
         self.advance()
 
     # compile a return statement
-    def compileReturn(self, xmlstatements: ET.Element) -> None:
-        # create new xml element
-        xmlreturnStatement = ET.SubElement(xmlstatements, "returnStatement")
-        # parse "return"
-        self.addXmlElement(xmlreturnStatement, "keyword")
+    def compileReturn(self) -> None:
         # parse possibly expression
         self.advance()
         if not self.token == ";":
-            self.compileExpression(xmlreturnStatement)
-        # parse ";"
-        self.addXmlElement(xmlreturnStatement, "symbol")
-        # next token
+            self.compileExpression()
+            self.writer.writeReturn()
+        # return 0 when return type is void
+        else:
+            self.writer.writePush("constant", 0)
+            self.writer.writeReturn()
         self.advance()
 
     # compile an expression
-    def compileExpression(self, xmlparent: ET.Element) -> None:
-        # create new xml element
-        xmlexpression = ET.SubElement(xmlparent, "expression")
+    def compileExpression(self) -> None:
         # parse one or more terms
-        while True:
-            self.compileTerm(xmlexpression, False)
-            if self.token in ["+", "-", "*", "/", "&", "|", ">", "<", "="]:
-                # parse op
-                self.addXmlElement(xmlexpression, "symbol")
-                self.advance()
-            else:
-                break
+        self.compileTerm()
+        while self.token in ["+", "-", "*", "/", "&", "|", ">", "<", "="]:
+            op = self.token
+            self.advance()
+            self.compileTerm()
+            # add postfix operator
+            self.writer.writeArithmetic(op)
 
     # compile a term. If the current token is identifier,
     # the routine must resolve it into a variable / array element / subroutine call
     # single lookahead token is needed to distinguish between the possibilities
     # another token is not part of this term and should not be advanced over
-    def compileTerm(self, xmlparent: ET.Element, isfromdoStatement: bool) -> None:
-        # create new xml element
-        if not isfromdoStatement:
-            xmlterm = ET.SubElement(xmlparent, "term")
+    def compileTerm(self) -> None:
         # parse integerConstant
         if self.tokentype == "INT_CONST":
-            self.addXmlElement(xmlterm, "integerConstant")
+            self.writer.writePush("constant", self.token)
         # parse stringConstant
         elif self.tokentype == "STRING_CONST":
-            self.addXmlElement(xmlterm, "stringConstant")
+            pass
         # parse keywordConstant: "true", "false", "null", "this"
         elif self.tokentype == "KEYWORD":
-            self.addXmlElement(xmlterm, "keyword")
+            pass
         # parse varName, varName[expression], subroutineCall
         elif self.tokentype == "IDENTIFIER":
-            xmlparent = xmlparent if isfromdoStatement else xmlterm
             # single lookahead
             next_token = self.tokenstream[self.position + 1][0]
             if next_token == "[":
                 # parse varName
-                self.addXmlElement(
-                    xmlparent, "identifier", self.getSTinfo(self.token, "used")
-                )
                 # parse "["
                 self.advance()
-                self.addXmlElement(xmlparent, "symbol")
                 # parse expression
                 self.advance()
-                self.compileExpression(xmlparent)
+                self.compileExpression()
                 # parse "]"
-                self.addXmlElement(xmlparent, "symbol")
             elif next_token == "(":
-                # parse subroutineName
-                self.addXmlElement(xmlparent, "identifier")
-                # parse "("
-                self.advance()
-                self.addXmlElement(xmlparent, "symbol")
-                # parse expressionList
-                self.advance()
-                self.compileExpressionList(xmlparent)
-                # parse ")"
-                self.addXmlElement(xmlparent, "symbol")
-            # parse subroutineCall
+                self.advance(2)
+                nArgs = self.compileExpressionList()
+            # parse (className | varName).subroutineName(expressionList)
             elif next_token == ".":
-                # parse className or varName
-                self.addXmlElement(xmlparent, "identifier")
-                # parse "."
-                self.advance()
-                self.addXmlElement(xmlparent, "symbol")
-                # parse subroutineName
-                self.advance()
-                self.addXmlElement(xmlparent, "identifier")
-                # parse "("
-                self.advance()
-                self.addXmlElement(xmlparent, "symbol")
-                # parse expressionList
-                self.advance()
-                self.compileExpressionList(xmlparent)
-                # parse ")"
-                self.addXmlElement(xmlparent, "symbol")
+                classNameorvarName = self.token
+                self.advance(2)
+                subroutineName = self.token
+                self.advance(2)
+                nArgs = self.compileExpressionList()
+                self.writer.writeCall(f"{classNameorvarName}.{subroutineName}", nArgs)
             # parse varName
             else:
-                self.addXmlElement(
-                    xmlterm, "identifier", self.getSTinfo(self.token, "used")
-                )
+                pass
         # parse unaryOp term
         elif self.token in ["-", "~"]:
-            self.addXmlElement(xmlterm, "symbol")
             self.advance()
-            self.compileTerm(xmlterm, False)
+            self.compileTerm()
             return
         # parse (pression)
         elif self.token == "(":
-            # parse "("
-            self.addXmlElement(xmlterm, "symbol")
-            # parse expression
             self.advance()
-            self.compileExpression(xmlterm)
-            # parse "("
-            self.addXmlElement(xmlterm, "symbol")
-        # next token
+            self.compileExpression()
         self.advance()
 
     # compile a possibly empty comma-seperated list of expressions
     # returns the number of expressions in the list
     # the return value is necessary for generating VM code, thus not used in project 10
-    def compileExpressionList(self, xmlsubroutineCall: ET.Element) -> int:
-        # create new xml element
-        xmlexpressionList = ET.SubElement(xmlsubroutineCall, "expressionList")
+    def compileExpressionList(self) -> int:
         # initialize expression counter
         cnt = 0
         # parse zero or more expression
         while not self.token == ")":
             # parse first expression
-            self.compileExpression(xmlexpressionList)
+            self.compileExpression()
             cnt += 1
             if self.token == ",":
-                # parse ","
-                self.addXmlElement(xmlexpressionList, "symbol")
                 self.advance()
         return cnt
 
     """ below are helper functions """
-
-    # parse the current token to xml element
-    def addXmlElement(self, parent: ET.Element, type: str, STinfo: str = None) -> None:
-        if STinfo:
-            element = ET.SubElement(parent, type, attrib={"STinfo": STinfo})
-        else:
-            element = ET.SubElement(parent, type)
-        element.text = self.token
-
-    # write the formatted xml data to file
-    def writeXml(self) -> None:
-        ET.indent(self.xmlclass)
-        with open(self.outputfile, "w") as f:
-            f.write(
-                ET.tostring(
-                    self.xmlclass, encoding="unicode", short_empty_elements=False
-                )
-            )
 
     # get all tokens and their type from tokenizer at once
     def getTokenStream(self) -> None:
@@ -475,14 +313,6 @@ class CompilationEngine:
         (self.token, self.tokentype) = self.tokenstream[0]
 
     # advance token by one and update current token and tokentype
-    def advance(self) -> None:
-        self.position += 1
+    def advance(self, step: int = 1) -> None:
+        self.position += step
         (self.token, self.tokentype) = self.tokenstream[self.position]
-
-    # compose symbol table information of given name
-    # first find in subroutine-level, then class-level
-    def getSTinfo(self, name: str, usage: str) -> str:
-        ST = self.subroutineST if self.subroutineST.hasSymbol(name) else self.classST
-        return " | ".join(
-            [name, ST.typeOf(name), ST.kindOf(name), str(ST.indexOf(name)), usage]
-        )

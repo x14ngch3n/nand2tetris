@@ -5,8 +5,9 @@ import os
 
 from CompilationEngine import CompilationEngine
 
+# main program that sets up and invokes CompilationEngine module
 
-# main program that sets up and invokes other two modules
+
 class JackCompiler:
     # parse the commandline argument
     def __init__(self, input: str) -> None:
@@ -25,10 +26,9 @@ class JackCompiler:
     # drive the syntax analysis process
     def compile(self) -> None:
         for inputfile in self.inputfiles:
-            outputfile = inputfile.replace("jack", "xml")
+            outputfile = inputfile.replace("jack", "vm")
             engine = CompilationEngine(inputfile, outputfile)
             engine.compileClass()
-            engine.writeXml()
 
 
 if __name__ == "__main__":
