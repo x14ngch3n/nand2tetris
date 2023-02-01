@@ -50,12 +50,10 @@ class VMWriter:
 
     # Write a VM call command
     def writeCall(self, name: str, nArgs: int) -> None:
-        self.writeComment(f"call function {name}")
         self.writeLine(f"call {name} {nArgs}")
 
     # Write a VM function command
     def writeFunction(self, name: str, nVars: int) -> None:
-        self.writeComment(f"define function {name}")
         self.writeLine(f"function {name} {str(nVars)}")
 
     # Write a VM return command
@@ -70,8 +68,3 @@ class VMWriter:
 
     def writeLine(self, code: str = "") -> None:
         self.outputstream.write(code + "\n")
-
-    def writeComment(self, comment: str) -> None:
-        self.writeLine()
-        self.writeLine(f"// {comment}")
-        self.writeLine()

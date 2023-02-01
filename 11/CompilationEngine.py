@@ -77,6 +77,9 @@ class CompilationEngine:
         self.advance(2)
         self.subroutineName = self.token
         self.advance(2)
+        # insert the implicit this pointer as argument 0
+        if self.subroutineType == "method":
+            self.subroutineST.define("this", self.className, "arg")
         self.compileParameterList()
         # parse subroutineBody
         self.advance()
@@ -114,7 +117,6 @@ class CompilationEngine:
             self.writer.writeCall("Memory.alloc", 1)
             self.writer.writePop("pointer", 0)
         elif self.subroutineType == "method":
-            self.subroutineST.define("this", self.className, "arg")
             # assign argument 0 to this pointer
             self.writer.writePush("argument", 0)
             self.writer.writePop("pointer", 0)
@@ -314,8 +316,8 @@ class CompilationEngine:
             elif next_token == "(":
                 subroutineName = self.token
                 self.advance(2)
-                nArgs = self.compileExpressionList()
                 self.writer.writePush("pointer", 0)
+                nArgs = self.compileExpressionList()
                 self.writer.writeCall(f"{self.className}.{subroutineName}", nArgs + 1)
             # parse (className | varName).subroutineName(expressionList)
             elif next_token == ".":
