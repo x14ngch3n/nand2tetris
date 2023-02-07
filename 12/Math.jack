@@ -59,7 +59,15 @@ class Math {
      *  the Jack expressions x/y and divide(x,y) return the same value.
      */
     function int divide(int x, int y) {
-        return 0;
+        var int abs_res;
+        let abs_res = Math.divide_abs(Math.abs(x), Math.abs(y)); 
+        if ((x < 0) & (y > 0)) {
+            return -abs_res;
+        }
+        if ((x > 0) & (y < 0)) {
+            return -abs_res;
+        }
+        return abs_res;
     }
 
     /** Returns the integer part of the square root of x. */
@@ -90,4 +98,17 @@ class Math {
         }
     }
 
+    /** recursive division with carrying */
+    function int divide_abs(int x, int y) {
+        var int q;
+        if (y > x) {
+            return 0;
+        }
+        let q = Math.divide_abs(x, y + y);
+        if ((x - (2 * q * y)) < y) {
+            return q + q;
+        } else {
+            return q + q + 1;
+        }
+    }
 }
