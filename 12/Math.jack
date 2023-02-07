@@ -72,7 +72,20 @@ class Math {
 
     /** Returns the integer part of the square root of x. */
     function int sqrt(int x) {
-        return 0;
+        var int res, i;
+        let res = 0;
+        let i = 7;
+        while (~(i < 0)) {
+            if (~((res + twoToThe[i]) * (res + twoToThe[i]) > x)) {
+                let res = res + twoToThe[i];
+            }
+            // prevent integer overflow
+            if (res + twoToThe[i] > 181) {
+                return 181;
+            }
+            let i = i - 1;
+        }
+        return res;
     }
 
     /** Returns the greater number. */
