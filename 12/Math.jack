@@ -76,12 +76,11 @@ class Math {
         let res = 0;
         let i = 7;
         while (~(i < 0)) {
-            if (~((res + twoToThe[i]) * (res + twoToThe[i]) > x)) {
-                let res = res + twoToThe[i];
-            }
             // prevent integer overflow
-            if (res + twoToThe[i] > 181) {
-                return 181;
+            if (res + twoToThe[i] < 182) {
+                if (~((res + twoToThe[i]) * (res + twoToThe[i]) > x)) {
+                    let res = res + twoToThe[i];
+                }
             }
             let i = i - 1;
         }
