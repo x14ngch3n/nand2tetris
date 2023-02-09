@@ -6,5 +6,11 @@ String:
 	cp String.jack StringTest
 	../../tools/JackCompiler.sh StringTest
 
+Memory:
+	cp Memory.jack MemoryTest
+	../../tools/JackCompiler.sh MemoryTest
+	cp Memory.jack MemoryTest/MemoryDiag
+	../../tools/JackCompiler.sh MemoryTest/MemoryDiag
+
 clean:
 	rm -rf `fd -e .vm`
