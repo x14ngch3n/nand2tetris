@@ -12,5 +12,9 @@ Memory:
 	cp Memory.jack MemoryTest/MemoryDiag
 	../../tools/JackCompiler.sh MemoryTest/MemoryDiag
 
+Array:
+	cp Array.jack ArrayTest
+	../../tools/JackCompiler.sh ArrayTest
+
 clean:
 	rm -rf `fd -e .vm`
