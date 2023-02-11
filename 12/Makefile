@@ -24,5 +24,13 @@ Output: Output.jack
 	cp Output.jack OutputTest
 	../../tools/JackCompiler.sh OutputTest
 
+Keyboard: Keyboard.jack
+	cp Keyboard.jack KeyboardTest
+	../../tools/JackCompiler.sh KeyboardTest
+
+Sys: Sys.jack
+	cp Sys.jack SysTest
+	../../tools/JackCompiler.sh SysTest
+
 clean:
 	rm -rf `fd -e .vm`
