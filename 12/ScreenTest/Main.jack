@@ -22,7 +22,7 @@ class Main {
         do Screen.drawLine(345,35,410,90);        // roof
 
         do Screen.drawCircle(140,60,30);          // sun
-        do Screen.drawLine(140,26, 140, 6);       
+        do Screen.drawLine(140,26,140,6);       
         do Screen.drawLine(163,35,178,20);       
         do Screen.drawLine(174,60,194,60);       
         do Screen.drawLine(163,85,178,100);       
