@@ -20,5 +20,9 @@ Screen: Screen.jack
 	cp Screen.jack ScreenTest
 	../../tools/JackCompiler.sh ScreenTest
 
+Output: Output.jack
+	cp Output.jack OutputTest
+	../../tools/JackCompiler.sh OutputTest
+
 clean:
 	rm -rf `fd -e .vm`
